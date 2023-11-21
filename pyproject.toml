@@ -1,0 +1,25 @@
+[tool.poetry]
+name = "poetry-auto-docker-plugin"
+version = "0.1.0"
+description = "Package your Poetry application to a Docker image automatically."
+authors = ["Nicolò Boschi <boschi1997@gmail.com>"]
+license = "MIT"
+readme = "README.md"
+packages = [
+    {include = "poetry_auto_docker_plugin", from = "."}
+]
+
+
+[tool.poetry.plugins."poetry.application.plugin"]
+auto-docker = "poetry_auto_docker_plugin.plugin:DockerApplicationPlugin"
+
+[tool.poetry.dependencies]
+python = "^3.9"
+poetry = "^1.7.1"
+poetry-core = "^1.8.1"
+docker = "^6.1.3"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
