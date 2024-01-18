@@ -29,4 +29,5 @@ jobs:
 
       - name: Run unit tests
         run: |
+          poetry install
           poetry run pytest
