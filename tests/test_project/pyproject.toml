@@ -14,7 +14,7 @@ flask = "*"
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
 
-[dockerize]
+[tool.dockerize]
 tags = ["latest", "latest-dev", "0.1.0"]
 env = {PORT = "5001"}
 ports = ["5001"]

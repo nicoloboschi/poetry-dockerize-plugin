@@ -7,7 +7,7 @@ import docker
 from poetry.toml import TOMLFile
 
 
-class AutoDockerConfiguration:
+class DockerizeConfiguration:
     name: str = ""
     tags: List[str] = []
     entrypoint_cmd: List[str] = []
@@ -27,8 +27,8 @@ class ProjectConfiguration:
     labels: dict[str, str]
 
 
-def parse_auto_docker_toml(dict: dict) -> AutoDockerConfiguration:
-    config = AutoDockerConfiguration()
+def parse_auto_docker_toml(dict: dict) -> DockerizeConfiguration:
+    config = DockerizeConfiguration()
     config.name = dict.get("name")
     tags = dict.get("tags")
     if tags:
@@ -41,6 +41,7 @@ def parse_auto_docker_toml(dict: dict) -> AutoDockerConfiguration:
     config.python = dict.get("python")
     config.ports = dict.get("ports")
     config.envs = dict.get("env")
+    config.labels = dict.get("labels")
     return config
 
 
@@ -50,9 +51,10 @@ def parse_pyproject_toml(pyproject_path) -> ProjectConfiguration:
     doc = file.read()
 
     config = ProjectConfiguration()
-    tool_poetry = doc.get('tool', dict()).get('poetry', dict())
+    tool = doc.get('tool', dict())
+    tool_poetry = tool.get('poetry', dict())
 
-    auto_docker = parse_auto_docker_toml(doc.get('dockerize', dict()))
+    auto_docker = parse_auto_docker_toml(tool.get('dockerize', dict()))
 
     config.image_name = auto_docker.name or tool_poetry['name']
     config.image_tags = auto_docker.tags or [tool_poetry["version"], "latest"]
@@ -149,10 +151,11 @@ def build(
         real_context_path = os.path.realpath(root_path)
         for tag in config.image_tags:
             full_image_name = f"{config.image_name}:{tag}"
-            print("Building image: " + full_image_name)
+            print(f"Building image: {full_image_name}")
             docker_client = docker.from_env()
             docker_client.images.build(
                 path=real_context_path,
                 dockerfile=dockerfile,
                 tag=full_image_name
             )
+            print(f"Successfully built image: {full_image_name}")
