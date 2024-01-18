@@ -6,12 +6,12 @@ authors = ["Nicolò Boschi <boschi1997@gmail.com>"]
 license = "MIT"
 readme = "README.md"
 packages = [
-    {include = "poetry_auto_docker_plugin", from = "."}
+    {include = "poetry_dockerize_plugin", from = "."}
 ]
 
 
 [tool.poetry.plugins."poetry.application.plugin"]
-dockerize = "poetry_auto_docker_plugin.plugin:DockerApplicationPlugin"
+dockerize = "poetry_dockerize_plugin.plugin:DockerApplicationPlugin"
 
 [tool.poetry.dependencies]
 python = "^3.9"
