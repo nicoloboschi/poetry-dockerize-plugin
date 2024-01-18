@@ -1,11 +1,11 @@
-# poetry-docker-plugin
-Package your Poetry application to a Docker image easily.
+# poetry-dockerize-plugin
+Package your Poetry application to a Docker image without configuration. It just works.
 
 ```
-pip install poetry-auto-docker-plugin
+poetry self add poetry-dockerize-plugin
 
 cd your-application
-poetry docker 
+poetry dockerize 
 $ ...
 $ Image built!
 
