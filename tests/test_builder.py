@@ -1,12 +1,15 @@
+import os
+
 from poetry_dockerize_plugin.builder import build_image, parse_pyproject_toml, generate_docker_file_content
 
-
+dirname = os.path.dirname(__file__)
+test_project = os.path.join(dirname, 'test_project')
 def test() -> None:
-    build_image(path="test_project")
+    build_image(path=test_project)
 
 
 def test_parse() -> None:
-    config = parse_pyproject_toml("test_project")
+    config = parse_pyproject_toml(test_project)
     content = generate_docker_file_content(config)
     print(content)
     assert content == """
