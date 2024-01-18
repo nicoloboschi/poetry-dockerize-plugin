@@ -1,0 +1,20 @@
+[tool.poetry]
+name = "poetry-sample-app"
+version = "0.1.0"
+description = ""
+authors = ["Nicolò Boschi <boschi1997@gmail.com>"]
+readme = "README.md"
+packages = [{include = "app"}]
+
+[tool.poetry.dependencies]
+python = "^3.11"
+flask = "*"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[dockerize]
+tags = ["latest", "latest-dev", "0.1.0"]
+env = {PORT = "5001"}
+ports = ["5001"]
