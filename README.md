@@ -49,6 +49,8 @@ ports = [5000]
 env = {"MY_APP_ENV" = "dev"}
 labels = {"MY_APP_LABEL" = "dev"}
 apt-packages = ["curl"]
+extra-build-instructions = ["RUN poetry config http-basic.foo <username> <password>"]
+extra-run-instructions = ["RUN curl https://huggingface.co/transformers/"]
 ```
 
 * `name` customizes the docker image name.
@@ -59,6 +61,8 @@ apt-packages = ["curl"]
 * `env` declares environment variables inside the docker image.
 * `labels` append labels to the docker image. Default labels are added following the opencontainers specification.
 * `apt-packages` installs apt packages inside the docker image.
+* `extra-build-instructions` adds extra instructions to the docker build (before poetry install). Any modification to the filesystem will be lost after the poetry install. If you need to add files to the image, use the `extra-run-instructions`.
+* `extra-run-instructions` adds extra instructions to the docker run (after poetry install). Any modification to the filesystem will be kept after the poetry install.
 
 
 ## Command-Line options
