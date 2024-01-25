@@ -21,6 +21,12 @@ ENV POETRY_VIRTUALENVS_IN_PROJECT=1
 ENV POETRY_VIRTUALENVS_CREATE=1
 ENV POETRY_CACHE_DIR=/tmp/poetry_cache
 
+ARG DEBIAN_FRONTEND=noninteractive
+
+RUN echo 'Acquire::http::Timeout "30";\\nAcquire::http::ConnectionAttemptDelayMsec "2000";\\nAcquire::https::Timeout "30";\\nAcquire::https::ConnectionAttemptDelayMsec "2000";\\nAcquire::ftp::Timeout "30";\\nAcquire::ftp::ConnectionAttemptDelayMsec "2000";\\nAcquire::Retries "15";' > /etc/apt/apt.conf.d/99timeout_and_retries \
+     && apt-get update \
+     && apt-get -y dist-upgrade \
+     && apt-get -y install git
 ADD . /app/
 
 RUN cd /app && poetry install && rm -rf $POETRY_CACHE_DIR
