@@ -18,6 +18,8 @@ class DockerizeConfiguration:
     envs: dict[str, str] = {}
     labels: dict[str, str] = {}
     apt_packages: List[str] = []
+    extra_build_instructions: List[str] = []
+    extra_runtime_instructions: List[str] = []
 
 
 class ProjectConfiguration:
@@ -29,6 +31,8 @@ class ProjectConfiguration:
     envs: dict[str, str] = {}
     labels: dict[str, str]
     apt_packages: List[str] = []
+    extra_build_instructions: List[str] = []
+    extra_runtime_instructions: List[str] = []
 
 
 def parse_auto_docker_toml(dict: dict) -> DockerizeConfiguration:
@@ -47,6 +51,8 @@ def parse_auto_docker_toml(dict: dict) -> DockerizeConfiguration:
     config.envs = dict.get("env")
     config.labels = dict.get("labels")
     config.apt_packages = dict.get("apt-packages")
+    config.extra_build_instructions = dict.get("extra-build-instructions")
+    config.extra_runtime_instructions = dict.get("extra-runtime-instructions")
     return config
 
 
@@ -59,13 +65,13 @@ def parse_pyproject_toml(pyproject_path) -> ProjectConfiguration:
     tool = doc.get('tool', dict())
     tool_poetry = tool.get('poetry', dict())
 
-    auto_docker = parse_auto_docker_toml(tool.get('dockerize', dict()))
+    dockerize_section = parse_auto_docker_toml(tool.get('dockerize', dict()))
 
-    config.image_name = auto_docker.name or tool_poetry['name']
-    config.image_tags = auto_docker.tags or [tool_poetry["version"], "latest"]
+    config.image_name = dockerize_section.name or tool_poetry['name']
+    config.image_tags = dockerize_section.tags or [tool_poetry["version"], "latest"]
 
-    if auto_docker.entrypoint_cmd:
-        config.entrypoint = auto_docker.entrypoint_cmd
+    if dockerize_section.entrypoint_cmd:
+        config.entrypoint = dockerize_section.entrypoint_cmd
     else:
         if 'packages' in tool_poetry:
             packages = tool_poetry['packages']
@@ -78,12 +84,12 @@ def parse_pyproject_toml(pyproject_path) -> ProjectConfiguration:
     if not config.entrypoint:
         raise ValueError('No package found in pyproject.toml and no entrypoint specified in dockerize section')
 
-    if not auto_docker.python:
+    if not dockerize_section.python:
         print("No python version specified in dockerize section, using 3.11")
         config.python_version = "3.11"
 
-    config.ports = auto_docker.ports or []
-    config.envs = auto_docker.envs or {}
+    config.ports = dockerize_section.ports or []
+    config.envs = dockerize_section.envs or {}
     license = tool_poetry["license"] if "license" in tool_poetry else ""
     repository = tool_poetry["repository"] if "repository" in tool_poetry else ""
 
@@ -93,13 +99,19 @@ def parse_pyproject_toml(pyproject_path) -> ProjectConfiguration:
               "org.opencontainers.image.licenses": license,
               "org.opencontainers.image.url": repository,
               "org.opencontainers.image.source": repository}
-    if auto_docker.labels:
-        labels.update(auto_docker.labels)
+    if dockerize_section.labels:
+        labels.update(dockerize_section.labels)
     config.labels = labels
-    config.apt_packages = auto_docker.apt_packages or []
+    config.apt_packages = dockerize_section.apt_packages or []
+    config.extra_build_instructions = dockerize_section.extra_build_instructions or []
+    config.extra_runtime_instructions = dockerize_section.extra_runtime_instructions or []
 
     return config
 
+def generate_extra_instructions_str(instructions: List[str]) -> str:
+    if not len(instructions):
+        return ""
+    return "\n".join(instructions)
 
 def generate_apt_packages_str(apt_packages: List[str]) -> str:
     if not len(apt_packages):
@@ -114,10 +126,7 @@ RUN echo 'Acquire::http::Timeout "30";\\nAcquire::http::ConnectionAttemptDelayMs
      && apt-get -y install {apt_packages_str}"""
 
 def generate_docker_file_content(config: ProjectConfiguration) -> str:
-    ports_str = ""
-    for port in config.ports:
-        ports_str += f"EXPOSE {port}\n"
-
+    ports_str = "\n".join([f"EXPOSE {port}" for port in config.ports])
     cmd_str = " ".join(config.entrypoint)
     envs_str = "\n".join([f"ENV {key}={value}" for key, value in config.envs.items()])
     labels_str = "\n".join([f"LABEL {key}={value}" for key, value in config.labels.items()])
@@ -131,7 +140,7 @@ ENV POETRY_VIRTUALENVS_CREATE=1
 ENV POETRY_CACHE_DIR=/tmp/poetry_cache
 {generate_apt_packages_str(["git"])}
 ADD . /app/
-
+{generate_extra_instructions_str(config.extra_build_instructions)}
 RUN cd /app && poetry install && rm -rf $POETRY_CACHE_DIR
 
 FROM python:{config.python_version}-slim-buster as runtime
@@ -145,7 +154,8 @@ ENV PYTHONUNBUFFERED=1
 WORKDIR /app
 COPY --from=builder /app/ /app/
 
-{ports_str}                
+{ports_str}
+{generate_extra_instructions_str(config.extra_runtime_instructions)}
 CMD {cmd_str}"""
 
 
