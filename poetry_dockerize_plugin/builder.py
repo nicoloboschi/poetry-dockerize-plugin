@@ -18,6 +18,7 @@ class DockerizeConfiguration:
     envs: dict[str, str] = {}
     labels: dict[str, str] = {}
     apt_packages: List[str] = []
+    base_image: str = ""
     extra_build_instructions: List[str] = []
     extra_runtime_instructions: List[str] = []
 
@@ -26,11 +27,11 @@ class ProjectConfiguration:
     image_name: str
     image_tags: List[str]
     entrypoint: List[str]
-    python_version: str
     ports: List[int] = []
     envs: dict[str, str] = {}
     labels: dict[str, str]
     apt_packages: List[str] = []
+    base_image: str = ""
     extra_build_instructions: List[str] = []
     extra_runtime_instructions: List[str] = []
 
@@ -51,6 +52,7 @@ def parse_auto_docker_toml(dict: dict) -> DockerizeConfiguration:
     config.envs = dict.get("env")
     config.labels = dict.get("labels")
     config.apt_packages = dict.get("apt-packages")
+    config.base_image = dict.get("base-image")
     config.extra_build_instructions = dict.get("extra-build-instructions")
     config.extra_runtime_instructions = dict.get("extra-runtime-instructions")
     return config
@@ -84,9 +86,13 @@ def parse_pyproject_toml(pyproject_path) -> ProjectConfiguration:
     if not config.entrypoint:
         raise ValueError('No package found in pyproject.toml and no entrypoint specified in dockerize section')
 
-    if not dockerize_section.python:
+    if dockerize_section.base_image:
+        config.base_image = dockerize_section.base_image
+    elif not dockerize_section.python:
         print("No python version specified in dockerize section, using 3.11")
-        config.python_version = "3.11"
+        config.base_image = "python:3.11-slim-buster"
+    else:
+        config.base_image = f"python:{dockerize_section.python}-slim-buster"
 
     config.ports = dockerize_section.ports or []
     config.envs = dockerize_section.envs or {}
@@ -131,7 +137,7 @@ def generate_docker_file_content(config: ProjectConfiguration) -> str:
     envs_str = "\n".join([f"ENV {key}={value}" for key, value in config.envs.items()])
     labels_str = "\n".join([f"LABEL {key}={value}" for key, value in config.labels.items()])
     return f"""
-FROM python:{config.python_version}-slim-buster as builder
+FROM {config.base_image} as builder
 RUN pip install poetry==1.7.1
 
 ENV POETRY_NO_INTERACTION=1
@@ -143,7 +149,7 @@ ADD . /app/
 {generate_extra_instructions_str(config.extra_build_instructions)}
 RUN cd /app && poetry install && rm -rf $POETRY_CACHE_DIR
 
-FROM python:{config.python_version}-slim-buster as runtime
+FROM {config.base_image} as runtime
 {generate_apt_packages_str(config.apt_packages)}
 {labels_str}
 
