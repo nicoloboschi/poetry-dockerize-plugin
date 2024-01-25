@@ -5,8 +5,7 @@ from poetry_dockerize_plugin.builder import build_image, parse_pyproject_toml, g
 dirname = os.path.dirname(__file__)
 test_project = os.path.join(dirname, 'test_project')
 def test() -> None:
-#    build_image(path=test_project)
-    build_image(path="/Users/nicoloboschi/dev/ragstack-ai")
+    build_image(path=test_project)
 
 
 def test_parse() -> None:
@@ -36,6 +35,7 @@ LABEL org.opencontainers.image.url=
 LABEL org.opencontainers.image.source=
 
 ENV PATH="/app/.venv/bin:$PATH"
+ENV PYTHONUNBUFFERED=1
 ENV PORT=5001
 
 WORKDIR /app
