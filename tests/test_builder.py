@@ -33,6 +33,12 @@ RUN cd /app && poetry install && rm -rf $POETRY_CACHE_DIR
 
 FROM python:3.11-slim-buster as runtime
 
+ARG DEBIAN_FRONTEND=noninteractive
+
+RUN echo 'Acquire::http::Timeout "30";\\nAcquire::http::ConnectionAttemptDelayMsec "2000";\\nAcquire::https::Timeout "30";\\nAcquire::https::ConnectionAttemptDelayMsec "2000";\\nAcquire::ftp::Timeout "30";\\nAcquire::ftp::ConnectionAttemptDelayMsec "2000";\\nAcquire::Retries "15";' > /etc/apt/apt.conf.d/99timeout_and_retries \
+     && apt-get update \
+     && apt-get -y dist-upgrade \
+     && apt-get -y install curl
 LABEL org.opencontainers.image.title=poetry-sample-app
 LABEL org.opencontainers.image.version=0.1.0
 LABEL org.opencontainers.image.authors=['Nicolò Boschi <boschi1997@gmail.com>']

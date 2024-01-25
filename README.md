@@ -48,6 +48,7 @@ python = "3.8"
 ports = [5000]
 env = {"MY_APP_ENV" = "dev"}
 labels = {"MY_APP_LABEL" = "dev"}
+apt-packages = ["curl"]
 ```
 
 * `name` customizes the docker image name.
@@ -57,6 +58,7 @@ labels = {"MY_APP_LABEL" = "dev"}
 * `ports` exposes ports
 * `env` declares environment variables inside the docker image.
 * `labels` append labels to the docker image. Default labels are added following the opencontainers specification.
+* `apt-packages` installs apt packages inside the docker image.
 
 
 ## Command-Line options
