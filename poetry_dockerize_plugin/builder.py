@@ -164,36 +164,76 @@ def build(
 
     with tempfile.NamedTemporaryFile() as tmp:
         dockerfile = tmp.name
+        real_context_path = os.path.realpath(root_path)
         content = generate_docker_file_content(config)
         tmp.write(content.encode("utf-8"))
         tmp.flush()
-        real_context_path = os.path.realpath(root_path)
-        for tag in config.image_tags:
-            full_image_name = f"{config.image_name}:{tag}"
-            print(f"Building image: {full_image_name}")
-            docker_client = docker.from_env()
-            try:
-                docker_client.images.build(
-                    path=real_context_path,
-                    dockerfile=dockerfile,
-                    tag=full_image_name,
-                    rm=False
-                )
-            except BuildError as e:
-                iterable = iter(e.build_log)
-                print("Build failed, printing execution logs:\n\n")
-                while True:
-                    try:
-                        item = next(iterable)
-                        if "stream" in item:
-                            print(item["stream"])
-                        elif "error" in item:
-                            print(item["error"])
-                        else:
-                            print(str(item))
-                    except StopIteration:
-                        break
-                print("Error: " + str(e))
-                raise e
 
-            print(f"Successfully built image: {full_image_name}")
+        dockerignore = os.path.join(real_context_path, ".dockerignore")
+        dockerignore_created = write_dockerignore_if_needed(dockerignore)
+        try:
+            for tag in config.image_tags:
+                full_image_name = f"{config.image_name}:{tag}"
+                print(f"Building image: {full_image_name} 🔨")
+                docker_client = docker.from_env()
+                try:
+                    docker_client.images.build(
+                        path=real_context_path,
+                        dockerfile=dockerfile,
+                        tag=full_image_name,
+                        rm=False
+                    )
+                except BuildError as e:
+                    iterable = iter(e.build_log)
+                    print("❌ Build failed, printing execution logs:\n\n")
+                    while True:
+                        try:
+                            item = next(iterable)
+                            if "stream" in item:
+                                print(item["stream"])
+                            elif "error" in item:
+                                print(item["error"])
+                            else:
+                                print(str(item))
+                        except StopIteration:
+                            break
+                    print("Error: " + str(e))
+                    raise e
+
+                print(f"Successfully built image: {full_image_name} ✅")
+        finally:
+            if dockerignore_created:
+                try:
+                    os.remove(dockerignore)
+                except:
+                    pass
+
+
+def write_dockerignore_if_needed(dockerignore: str):
+    dockerignore_created = False
+    if not os.path.exists(dockerignore):
+        print("No .dockerignore found, using a good default one 😉")
+        with open(dockerignore, "w") as f:
+            f.write("""
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.Python
+env
+pip-log.txt
+pip-delete-this-directory.txt
+.tox
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.log
+.git
+.mypy_cache
+.pytest_cache
+.hypothesis""")
+        dockerignore_created = True
+    return dockerignore_created
