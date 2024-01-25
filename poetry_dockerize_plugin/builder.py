@@ -1,3 +1,4 @@
+import logging
 import os.path
 import tempfile
 from pathlib import Path
@@ -16,6 +17,7 @@ class DockerizeConfiguration:
     ports: List[int] = []
     envs: dict[str, str] = {}
     labels: dict[str, str] = {}
+    apt_packages: List[str] = []
 
 
 class ProjectConfiguration:
@@ -26,6 +28,7 @@ class ProjectConfiguration:
     ports: List[int] = []
     envs: dict[str, str] = {}
     labels: dict[str, str]
+    apt_packages: List[str] = []
 
 
 def parse_auto_docker_toml(dict: dict) -> DockerizeConfiguration:
@@ -43,6 +46,7 @@ def parse_auto_docker_toml(dict: dict) -> DockerizeConfiguration:
     config.ports = dict.get("ports")
     config.envs = dict.get("env")
     config.labels = dict.get("labels")
+    config.apt_packages = dict.get("apt-packages")
     return config
 
 
@@ -92,9 +96,22 @@ def parse_pyproject_toml(pyproject_path) -> ProjectConfiguration:
     if auto_docker.labels:
         labels.update(auto_docker.labels)
     config.labels = labels
+    config.apt_packages = auto_docker.apt_packages or []
 
     return config
 
+
+def generate_apt_packages_str(apt_packages: List[str]) -> str:
+    if not len(apt_packages):
+        return ""
+    apt_packages_str = " ".join(apt_packages)
+    return f"""
+ARG DEBIAN_FRONTEND=noninteractive
+
+RUN echo 'Acquire::http::Timeout "30";\\nAcquire::http::ConnectionAttemptDelayMsec "2000";\\nAcquire::https::Timeout "30";\\nAcquire::https::ConnectionAttemptDelayMsec "2000";\\nAcquire::ftp::Timeout "30";\\nAcquire::ftp::ConnectionAttemptDelayMsec "2000";\\nAcquire::Retries "15";' > /etc/apt/apt.conf.d/99timeout_and_retries \
+     && apt-get update \
+     && apt-get -y dist-upgrade \
+     && apt-get -y install {apt_packages_str}"""
 
 def generate_docker_file_content(config: ProjectConfiguration) -> str:
     ports_str = ""
@@ -112,13 +129,13 @@ ENV POETRY_NO_INTERACTION=1
 ENV POETRY_VIRTUALENVS_IN_PROJECT=1
 ENV POETRY_VIRTUALENVS_CREATE=1
 ENV POETRY_CACHE_DIR=/tmp/poetry_cache
-
+{generate_apt_packages_str(["git"])}
 ADD . /app/
 
 RUN cd /app && poetry install && rm -rf $POETRY_CACHE_DIR
 
 FROM python:{config.python_version}-slim-buster as runtime
-
+{generate_apt_packages_str(config.apt_packages)}
 {labels_str}
 
 ENV PATH="/app/.venv/bin:$PATH"
@@ -163,8 +180,20 @@ def build(
                     rm=False
                 )
             except BuildError as e:
+                iterable = iter(e.build_log)
+                print("Build failed, printing execution logs:\n\n")
+                while True:
+                    try:
+                        item = next(iterable)
+                        if "stream" in item:
+                            print(item["stream"])
+                        elif "error" in item:
+                            print(item["error"])
+                        else:
+                            print(str(item))
+                    except StopIteration:
+                        break
                 print("Error: " + str(e))
-                print(e)
                 raise e
 
             print(f"Successfully built image: {full_image_name}")
