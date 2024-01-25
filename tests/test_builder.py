@@ -5,7 +5,8 @@ from poetry_dockerize_plugin.builder import build_image, parse_pyproject_toml, g
 dirname = os.path.dirname(__file__)
 test_project = os.path.join(dirname, 'test_project')
 def test() -> None:
-    build_image(path=test_project)
+#    build_image(path=test_project)
+    build_image(path="/Users/nicoloboschi/dev/ragstack-ai")
 
 
 def test_parse() -> None:
@@ -23,7 +24,7 @@ ENV POETRY_CACHE_DIR=/tmp/poetry_cache
 
 ADD . /app/
 
-RUN cd /app && poetry install --without dev --no-root && rm -rf $POETRY_CACHE_DIR
+RUN cd /app && poetry install && rm -rf $POETRY_CACHE_DIR
 
 FROM python:3.11-slim-buster as runtime
 

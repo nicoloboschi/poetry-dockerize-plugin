@@ -1,9 +1,10 @@
 import os.path
 import tempfile
 from pathlib import Path
-from typing import List, Optional
+from typing import List
 
 import docker
+from docker.errors import BuildError
 from poetry.toml import TOMLFile
 
 
@@ -153,9 +154,16 @@ def build(
             full_image_name = f"{config.image_name}:{tag}"
             print(f"Building image: {full_image_name}")
             docker_client = docker.from_env()
-            docker_client.images.build(
-                path=real_context_path,
-                dockerfile=dockerfile,
-                tag=full_image_name
-            )
+            try:
+                docker_client.images.build(
+                    path=real_context_path,
+                    dockerfile=dockerfile,
+                    tag=full_image_name,
+                    rm=False
+                )
+            except BuildError as e:
+                print("Error: " + str(e))
+                print(e)
+                raise e
+
             print(f"Successfully built image: {full_image_name}")
