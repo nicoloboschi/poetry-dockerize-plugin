@@ -3,7 +3,6 @@ name = "poetry-sample-app"
 version = "0.1.0"
 description = ""
 authors = ["Nicolò Boschi <boschi1997@gmail.com>"]
-readme = "README.md"
 packages = [{include = "app"}]
 
 [tool.poetry.dependencies]
