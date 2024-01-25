@@ -28,7 +28,7 @@ RUN echo 'Acquire::http::Timeout "30";\\nAcquire::http::ConnectionAttemptDelayMs
      && apt-get -y dist-upgrade \
      && apt-get -y install git
 ADD . /app/
-
+RUN poetry -V
 RUN cd /app && poetry install && rm -rf $POETRY_CACHE_DIR
 
 FROM python:3.11-slim-buster as runtime
@@ -54,5 +54,5 @@ WORKDIR /app
 COPY --from=builder /app/ /app/
 
 EXPOSE 5001
-                
+RUN echo 'Hello from Dockerfile' > /tmp/hello.txt
 CMD python -m app"""

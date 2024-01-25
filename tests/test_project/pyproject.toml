@@ -19,3 +19,5 @@ tags = ["latest", "latest-dev", "0.1.0"]
 env = {PORT = "5001"}
 ports = ["5001"]
 apt-packages = ["curl"]
+extra-runtime-instructions = ["RUN echo 'Hello from Dockerfile' > /tmp/hello.txt"]
+extra-build-instructions = ["RUN poetry -V"]
