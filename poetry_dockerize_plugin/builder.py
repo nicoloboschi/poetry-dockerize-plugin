@@ -115,13 +115,14 @@ ENV POETRY_CACHE_DIR=/tmp/poetry_cache
 
 ADD . /app/
 
-RUN cd /app && poetry install --without dev --no-root && rm -rf $POETRY_CACHE_DIR
+RUN cd /app && poetry install && rm -rf $POETRY_CACHE_DIR
 
 FROM python:{config.python_version}-slim-buster as runtime
 
 {labels_str}
 
 ENV PATH="/app/.venv/bin:$PATH"
+ENV PYTHONUNBUFFERED=1
 {envs_str}
 
 WORKDIR /app
