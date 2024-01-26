@@ -1,7 +1,17 @@
 # Poetry Dockerize Plugin
 
-![PyPI](https://img.shields.io/pypi/v/poetry-dockerize-plugin?color=green&label=pypi%20package)
-![PyPI](https://img.shields.io/pypi/pyversions/poetry-dockerize-plugin?color=gree)
+<p align="center">
+  <a href="https://pypi.org/project/poetry-dockerize-plugin/">
+    <img src="https://img.shields.io/pypi/v/poetry-dockerize-plugin?color=green&amp;label=pypi%20package" alt="PyPI">
+  </a>
+  <a href="https://pepy.tech/project/poetry-dockerize-plugin">
+    <img src="https://static.pepy.tech/badge/poetry-dockerize-plugin" alt="Downloads">
+  </a>
+  <a href="">
+    <img src="https://img.shields.io/pypi/pyversions/poetry-dockerize-plugin?color=green" alt="Py versions">
+  </a>
+</p>
+
 
 Key features:
 
