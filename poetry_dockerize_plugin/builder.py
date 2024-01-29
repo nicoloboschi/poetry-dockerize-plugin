@@ -196,14 +196,15 @@ COPY --from=builder /app/ /app/
 CMD {cmd_str}"""
 
 
-def build_image(path: str) -> None:
+def build_image(path: str, verbose: bool) -> None:
     config = parse_pyproject_toml(path)
     build(config=config, root_path=path)
 
 
 def build(
         root_path: str,
-        config: ProjectConfiguration
+        config: ProjectConfiguration,
+        verbose: bool = False
 ) -> None:
     """
     Build a docker image from a poetry project.
@@ -215,6 +216,8 @@ def build(
         content = generate_docker_file_content(config)
         tmp.write(content.encode("utf-8"))
         tmp.flush()
+        if verbose:
+            print("Building with dockerfile content: \n\n" + content + "\n\n")
 
         dockerignore = os.path.join(real_context_path, ".dockerignore")
         dockerignore_created = write_dockerignore_if_needed(dockerignore)

@@ -101,11 +101,10 @@ extra-run-instructions = ["RUN curl https://huggingface.co/transformers/"]
 ```
 
 * `name` customizes the docker image name. 
-* `python` python version to use. Default is `3.11`
+* `python` python version to use. If not specified, will try to be extracted from `tool.poetry.dependencies.python`. Default is `3.11`
 * `base-image` customizes the base image. If not defined, the default base image is `python:<python-version>-slim-buster`. 
 * `tags` declares a list of tags for the image.
 * `entrypoint` customizes the entrypoint of the image. If not provided, the default entrypoint is retrieved from the `packages` configuration.
-
 * `ports` exposes ports
 * `env` declares environment variables inside the docker image.
 * `labels` append labels to the docker image. Default labels are added following the opencontainers specification.
@@ -120,6 +119,14 @@ All command line options provided by the `poetry-dockerize-plugin` may be access
 
 ```bash
 poetry dockerize --help
+```
+
+## Troubleshooting
+
+To troubleshoot the plugin, you can use the `--verbose` flag to get more information about the execution.
+
+```bash
+poetry dockerize -v
 ```
 
 ## License

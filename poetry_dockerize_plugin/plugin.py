@@ -18,6 +18,12 @@ class DockerCommand(Command):
             flag=False,
             default=os.getcwd(),
         ),
+        option(
+            "verbose",
+            "v",
+            flag=True,
+            default=False,
+        ),
     ]
 
     def handle(self) -> int:
