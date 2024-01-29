@@ -78,7 +78,10 @@ def parse_pyproject_toml(pyproject_path) -> ProjectConfiguration:
         if 'packages' in tool_poetry:
             packages = tool_poetry['packages']
             if len(packages) > 1:
-                raise ValueError('Only one package is supported')
+                raise ValueError(f"""Multiple 'packages' found in pyproject.toml, please specify 'entrypoint' in 'tool.dockerize' section.
+[tool.dockerize] 
+entrypoint = "python -m {packages[0]['include']}"
+""")
             package = packages[0]
             name = package["include"]
             config.entrypoint = ["python", "-m", name]
@@ -98,10 +101,11 @@ def parse_pyproject_toml(pyproject_path) -> ProjectConfiguration:
     config.envs = dockerize_section.envs or {}
     license = tool_poetry["license"] if "license" in tool_poetry else ""
     repository = tool_poetry["repository"] if "repository" in tool_poetry else ""
+    authors = tool_poetry["authors"] if "authors" in tool_poetry else ""
 
     labels = {"org.opencontainers.image.title": config.image_name,
               "org.opencontainers.image.version": tool_poetry["version"],
-              "org.opencontainers.image.authors": tool_poetry["authors"],
+              "org.opencontainers.image.authors": authors,
               "org.opencontainers.image.licenses": license,
               "org.opencontainers.image.url": repository,
               "org.opencontainers.image.source": repository}
