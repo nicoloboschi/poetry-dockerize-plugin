@@ -37,6 +37,42 @@ docker run --rm -it poetry-sample-app:latest
 >hello world!
 ```
 
+### Usage in GitHub Actions
+You just need to run the quickstart command in your GitHub Actions workflow:
+```yaml
+
+name: Build and publish latest
+
+on:
+  push:
+    branches: main
+
+jobs:
+  login:
+    runs-on: ubuntu-latest
+    steps:
+        - name: Install Poetry
+          uses: snok/install-poetry@v1
+
+        - name: Install poetry-dockerize-plugin
+          run: poetry self add poetry-dockerize-plugin
+
+        - name: Build and package
+          run: |
+            poetry install
+            poetry run pytest
+            poetry dockerize
+
+        - name: Login to Docker Hub
+          uses: docker/login-action@v3
+          with:
+            username: ${{ secrets.DOCKERHUB_USERNAME }}
+            password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+        - name: Push to Docker Hub
+          run: docker push my-app:latest
+```
+
 ## Configuration
 To customize some options, you can add a `[tool.dockerize]` section in your `pyproject.toml` file. For example to change the image name:
 
