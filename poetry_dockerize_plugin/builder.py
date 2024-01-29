@@ -1,8 +1,10 @@
 import logging
 import os.path
+import re
+import sys
 import tempfile
 from pathlib import Path
-from typing import List
+from typing import List, Optional
 
 import docker
 from docker.errors import BuildError
@@ -58,6 +60,20 @@ def parse_auto_docker_toml(dict: dict) -> DockerizeConfiguration:
     return config
 
 
+
+def extract_python_version(pyversion: str) -> Optional[str]:
+    try:
+        if pyversion == "*":
+            python_version = f"{sys.version_info.major}.{sys.version_info.minor}"
+            print(f"Python version is too generic (*), using same as system: {python_version}")
+        elif re.match("[\\^~]?(\\d\\.\\d+)(\\.\\d+)?", pyversion) is not None:
+            python_version = re.match("[\\^~]?(\\d\\.\\d+)(\\.\\d+)?", pyversion).group(1)
+        else:
+            python_version = re.match("[\\^~]?(\\d)(\\.\\*)?", pyversion).group(1)
+        return python_version
+    except Exception:
+        return None
+
 def parse_pyproject_toml(pyproject_path) -> ProjectConfiguration:
     pyproject_file = os.path.join(pyproject_path, 'pyproject.toml')
     file = TOMLFile(Path(pyproject_file))
@@ -72,13 +88,17 @@ def parse_pyproject_toml(pyproject_path) -> ProjectConfiguration:
     config.image_name = dockerize_section.name or tool_poetry['name']
     config.image_tags = dockerize_section.tags or [tool_poetry["version"], "latest"]
 
+
     if dockerize_section.entrypoint_cmd:
         config.entrypoint = dockerize_section.entrypoint_cmd
     else:
         if 'packages' in tool_poetry:
             packages = tool_poetry['packages']
             if len(packages) > 1:
-                raise ValueError('Only one package is supported')
+                raise ValueError(f"""Multiple 'packages' found in pyproject.toml, please specify 'entrypoint' in 'tool.dockerize' section.
+[tool.dockerize] 
+entrypoint = "python -m {packages[0]['include']}"
+""")
             package = packages[0]
             name = package["include"]
             config.entrypoint = ["python", "-m", name]
@@ -89,8 +109,18 @@ def parse_pyproject_toml(pyproject_path) -> ProjectConfiguration:
     if dockerize_section.base_image:
         config.base_image = dockerize_section.base_image
     elif not dockerize_section.python:
-        print("No python version specified in dockerize section, using 3.11")
-        config.base_image = "python:3.11-slim-buster"
+        if "dependencies" not in tool_poetry or "python" not in tool_poetry["dependencies"]:
+            print("No python version specified in pyproject.toml, using 3.11")
+            python_version = "3.11"
+        else:
+            declared_py_version = tool_poetry["dependencies"]["python"]
+            python_version = extract_python_version(declared_py_version)
+            if python_version is None:
+                python_version = "3.11"
+                print(f"Declared python version dependency is too complex, using default: {python_version}")
+            else:
+                print(f"Python version extracted from project configuration: {python_version}")
+        config.base_image = f"python:{python_version}-slim-buster"
     else:
         config.base_image = f"python:{dockerize_section.python}-slim-buster"
 
@@ -98,10 +128,11 @@ def parse_pyproject_toml(pyproject_path) -> ProjectConfiguration:
     config.envs = dockerize_section.envs or {}
     license = tool_poetry["license"] if "license" in tool_poetry else ""
     repository = tool_poetry["repository"] if "repository" in tool_poetry else ""
+    authors = tool_poetry["authors"] if "authors" in tool_poetry else ""
 
     labels = {"org.opencontainers.image.title": config.image_name,
               "org.opencontainers.image.version": tool_poetry["version"],
-              "org.opencontainers.image.authors": tool_poetry["authors"],
+              "org.opencontainers.image.authors": authors,
               "org.opencontainers.image.licenses": license,
               "org.opencontainers.image.url": repository,
               "org.opencontainers.image.source": repository}

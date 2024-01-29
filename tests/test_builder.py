@@ -1,11 +1,98 @@
 import os
+import tempfile
 
-from poetry_dockerize_plugin.builder import build_image, parse_pyproject_toml, generate_docker_file_content
+from poetry_dockerize_plugin.builder import build_image, parse_pyproject_toml, generate_docker_file_content, \
+    ProjectConfiguration
 
 dirname = os.path.dirname(__file__)
 test_project = os.path.join(dirname, 'test_project')
+
+
+def _parse_pyproject_toml_content(content: str) -> ProjectConfiguration:
+    tempdir = tempfile.TemporaryDirectory()
+    with open(os.path.join(tempdir.name, "pyproject.toml"), 'w') as f:
+        f.write(content)
+    return parse_pyproject_toml(tempdir.name)
+
+
 def test() -> None:
     build_image(path=test_project)
+
+
+def test_parse_entrypoint() -> None:
+    doc = _parse_pyproject_toml_content("""
+[tool.poetry]
+name = "my-app"
+version = "0.1.0"
+packages = [{include = "app"}]
+    """)
+
+    assert doc.entrypoint == ['python', '-m', 'app']
+
+
+def test_parse_custom_entrypoint() -> None:
+    doc = _parse_pyproject_toml_content("""
+[tool.poetry]
+name = "my-app"
+version = "0.1.0"
+packages = [{include = "app"}]
+[tool.dockerize]
+entrypoint = "uvicorn app.main:app --host"
+    """)
+
+    assert doc.entrypoint == "uvicorn app.main:app --host"
+
+
+def test_parse_entrypoint_with_multiple_packages() -> None:
+    try:
+        _parse_pyproject_toml_content("""
+[tool.poetry]
+name = "my-app"
+version = "0.1.0"
+packages = [{include = "app"}, {include = "app2"}]
+    """)
+    except Exception as e:
+        assert str(e) == """Multiple 'packages' found in pyproject.toml, please specify 'entrypoint' in 'tool.dockerize' section.
+[tool.dockerize] 
+entrypoint = "python -m app"
+"""
+        doc = _parse_pyproject_toml_content("""
+        [tool.poetry]
+        name = "my-app"
+        version = "0.1.0"
+        packages = [{include = "app"}, {include = "app2"}]
+        [tool.dockerize]
+        entrypoint = "python -m app2"
+""")
+        assert doc.entrypoint == "python -m app2"
+
+
+def test_parse_pyversion() -> None:
+    doc = _parse_pyproject_toml_content("""
+[tool.poetry]
+name = "my-app"
+version = "0.1.0"
+packages = [{include = "app"}]
+    """)
+    assert doc.base_image == "python:3.11-slim-buster"
+    doc = _parse_pyproject_toml_content("""
+    [tool.poetry]
+    name = "my-app"
+    version = "0.1.0"
+    packages = [{include = "app"}]
+    [tool.poetry.dependencies]
+    python = "^3.9"
+""")
+    assert doc.base_image == "python:3.9-slim-buster"
+    doc = _parse_pyproject_toml_content("""
+        [tool.poetry]
+        name = "my-app"
+        version = "0.1.0"
+        packages = [{include = "app"}]
+        [tool.poetry.dependencies]
+        python = ">3.9,<3.12"
+    """)
+    assert doc.base_image == "python:3.11-slim-buster"
 
 
 def test_parse() -> None:
