@@ -196,9 +196,9 @@ COPY --from=builder /app/ /app/
 CMD {cmd_str}"""
 
 
-def build_image(path: str, verbose: bool) -> None:
+def build_image(path: str, verbose: bool = False) -> None:
     config = parse_pyproject_toml(path)
-    build(config=config, root_path=path)
+    build(config=config, root_path=path, verbose=verbose)
 
 
 def build(
