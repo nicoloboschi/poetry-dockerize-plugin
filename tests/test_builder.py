@@ -56,6 +56,43 @@ packages = [{include = "app"}, {include = "app2"}]
 [tool.dockerize] 
 entrypoint = "python -m app"
 """
+        doc = _parse_pyproject_toml_content("""
+        [tool.poetry]
+        name = "my-app"
+        version = "0.1.0"
+        packages = [{include = "app"}, {include = "app2"}]
+        [tool.dockerize]
+        entrypoint = "python -m app2"
+""")
+        assert doc.entrypoint == "python -m app2"
+
+
+def test_parse_pyversion() -> None:
+    doc = _parse_pyproject_toml_content("""
+[tool.poetry]
+name = "my-app"
+version = "0.1.0"
+packages = [{include = "app"}]
+    """)
+    assert doc.base_image == "python:3.11-slim-buster"
+    doc = _parse_pyproject_toml_content("""
+    [tool.poetry]
+    name = "my-app"
+    version = "0.1.0"
+    packages = [{include = "app"}]
+    [tool.poetry.dependencies]
+    python = "^3.9"
+""")
+    assert doc.base_image == "python:3.9-slim-buster"
+    doc = _parse_pyproject_toml_content("""
+        [tool.poetry]
+        name = "my-app"
+        version = "0.1.0"
+        packages = [{include = "app"}]
+        [tool.poetry.dependencies]
+        python = ">3.9,<3.12"
+    """)
+    assert doc.base_image == "python:3.11-slim-buster"
 
 
 def test_parse() -> None:
