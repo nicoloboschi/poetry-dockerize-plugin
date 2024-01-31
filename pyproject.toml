@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "poetry-dockerize-plugin"
-version = "0.2.0"
+version = "0.3.0"
 description = "Poetry application to Docker, automatically."
 authors = ["Nicolò Boschi <boschi1997@gmail.com>"]
 license = "MIT"
