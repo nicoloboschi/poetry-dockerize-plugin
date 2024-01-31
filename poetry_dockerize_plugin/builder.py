@@ -3,6 +3,7 @@ import os.path
 import re
 import sys
 import tempfile
+import time
 from pathlib import Path
 from typing import List, Optional
 
@@ -32,23 +33,32 @@ class ProjectConfiguration:
     ports: List[int] = []
     envs: dict[str, str] = {}
     labels: dict[str, str]
-    apt_packages: List[str] = []
+    build_apt_packages: List[str] = []
+    runtime_apt_packages: List[str] = []
     base_image: str = ""
     extra_build_instructions: List[str] = []
     extra_runtime_instructions: List[str] = []
+    deps_packages: List[str] = []
+    app_packages: List[str] = []
 
 
-def parse_auto_docker_toml(dict: dict) -> DockerizeConfiguration:
+
+def get_list_or_str_from_dict(dict: dict, key: str, split_by: Optional[str] = None) -> List[str]:
+    value = dict.get(key)
+    if value is None:
+        return []
+    if isinstance(value, list):
+        return value
+    if split_by is not None:
+        return str(value).split(split_by)
+    return [str(value)]
+
+
+def parse_dockerize_toml(dict: dict) -> DockerizeConfiguration:
     config = DockerizeConfiguration()
     config.name = dict.get("name")
-    tags = dict.get("tags")
-    if tags:
-        if isinstance(tags, list):
-            config.tags = tags
-        else:
-            config.tags = [tags]
-
-    config.entrypoint_cmd = dict.get("entrypoint")
+    config.tags = get_list_or_str_from_dict(dict, "tags")
+    config.entrypoint_cmd = get_list_or_str_from_dict(dict, "entrypoint", split_by=" ")
     config.python = dict.get("python")
     config.ports = dict.get("ports")
     config.envs = dict.get("env")
@@ -58,7 +68,6 @@ def parse_auto_docker_toml(dict: dict) -> DockerizeConfiguration:
     config.extra_build_instructions = dict.get("extra-build-instructions")
     config.extra_runtime_instructions = dict.get("extra-runtime-instructions")
     return config
-
 
 
 def extract_python_version(pyversion: str) -> Optional[str]:
@@ -74,6 +83,7 @@ def extract_python_version(pyversion: str) -> Optional[str]:
     except Exception:
         return None
 
+
 def parse_pyproject_toml(pyproject_path) -> ProjectConfiguration:
     pyproject_file = os.path.join(pyproject_path, 'pyproject.toml')
     file = TOMLFile(Path(pyproject_file))
@@ -83,11 +93,10 @@ def parse_pyproject_toml(pyproject_path) -> ProjectConfiguration:
     tool = doc.get('tool', dict())
     tool_poetry = tool.get('poetry', dict())
 
-    dockerize_section = parse_auto_docker_toml(tool.get('dockerize', dict()))
+    dockerize_section = parse_dockerize_toml(tool.get('dockerize', dict()))
 
     config.image_name = dockerize_section.name or tool_poetry['name']
     config.image_tags = dockerize_section.tags or [tool_poetry["version"], "latest"]
-
 
     if dockerize_section.entrypoint_cmd:
         config.entrypoint = dockerize_section.entrypoint_cmd
@@ -105,6 +114,18 @@ entrypoint = "python -m {packages[0]['include']}"
 
     if not config.entrypoint:
         raise ValueError('No package found in pyproject.toml and no entrypoint specified in dockerize section')
+
+    config.apt_packages = dockerize_section.apt_packages or []
+    if 'packages' in tool_poetry:
+        config.app_packages += [package["include"] for package in tool_poetry['packages']]
+
+    if "dependencies" in tool_poetry:
+        for dep in tool_poetry["dependencies"]:
+            if isinstance(tool_poetry["dependencies"][dep], dict):
+                if 'path' in tool_poetry["dependencies"][dep]:
+                    config.deps_packages.append(tool_poetry["dependencies"][dep]['path'])
+                if 'git' in tool_poetry["dependencies"][dep]:
+                    config.build_apt_packages.append("git")
 
     if dockerize_section.base_image:
         config.base_image = dockerize_section.base_image
@@ -139,21 +160,23 @@ entrypoint = "python -m {packages[0]['include']}"
     if dockerize_section.labels:
         labels.update(dockerize_section.labels)
     config.labels = labels
-    config.apt_packages = dockerize_section.apt_packages or []
+    config.build_runtime_packages = dockerize_section.apt_packages or []
     config.extra_build_instructions = dockerize_section.extra_build_instructions or []
     config.extra_runtime_instructions = dockerize_section.extra_runtime_instructions or []
 
     return config
+
 
 def generate_extra_instructions_str(instructions: List[str]) -> str:
     if not len(instructions):
         return ""
     return "\n".join(instructions)
 
+
 def generate_apt_packages_str(apt_packages: List[str]) -> str:
     if not len(apt_packages):
         return ""
-    apt_packages_str = " ".join(apt_packages)
+    apt_packages_str = " ".join(list(set(apt_packages)))
     return f"""
 ARG DEBIAN_FRONTEND=noninteractive
 
@@ -162,7 +185,29 @@ RUN echo 'Acquire::http::Timeout "30";\\nAcquire::http::ConnectionAttemptDelayMs
      && apt-get -y dist-upgrade \
      && apt-get -y install {apt_packages_str}"""
 
-def generate_docker_file_content(config: ProjectConfiguration) -> str:
+
+def generate_add_project_toml_str(config: ProjectConfiguration, real_context_path: str) -> str:
+    add_str = "RUN mkdir /app\n"
+    if os.path.exists(os.path.join(real_context_path, "poetry.lock")):
+        add_str += "COPY poetry.lock /app/poetry.lock\n"
+    add_str += "COPY pyproject.toml /app/pyproject.toml\n"
+    for package in config.deps_packages:
+        if os.path.exists(os.path.join(real_context_path, package)):
+            add_str += f"COPY ./{package} /app/{package}\n"
+        else:
+            print(f"WARNING: {package} not found, skipping it")
+    return add_str
+
+def generate_add_packages_str(config: ProjectConfiguration, real_context_path: str) -> str:
+    add_str = ""
+    for package in config.app_packages:
+        if os.path.exists(os.path.join(real_context_path, package)):
+            add_str += f"COPY ./{package} /app/{package}\n"
+        else:
+            print(f"WARNING: {package} not found, skipping it")
+    return add_str
+
+def generate_docker_file_content(config: ProjectConfiguration, real_context_path: str) -> str:
     ports_str = "\n".join([f"EXPOSE {port}" for port in config.ports])
     cmd_str = " ".join(config.entrypoint)
     envs_str = "\n".join([f"ENV {key}={value}" for key, value in config.envs.items()])
@@ -175,13 +220,18 @@ ENV POETRY_NO_INTERACTION=1
 ENV POETRY_VIRTUALENVS_IN_PROJECT=1
 ENV POETRY_VIRTUALENVS_CREATE=1
 ENV POETRY_CACHE_DIR=/tmp/poetry_cache
-{generate_apt_packages_str(["git"])}
-ADD . /app/
+RUN poetry config virtualenvs.create false && poetry config virtualenvs.in-project false
+
+{generate_apt_packages_str(config.build_apt_packages)}
+{generate_add_project_toml_str(config, real_context_path)}
+
+RUN cd /app && poetry install --no-interaction --no-ansi --no-root
+
+{generate_add_packages_str(config, real_context_path)}
 {generate_extra_instructions_str(config.extra_build_instructions)}
-RUN cd /app && poetry install && rm -rf $POETRY_CACHE_DIR
 
 FROM {config.base_image} as runtime
-{generate_apt_packages_str(config.apt_packages)}
+{generate_apt_packages_str(config.runtime_apt_packages)}
 {labels_str}
 
 ENV PATH="/app/.venv/bin:$PATH"
@@ -213,11 +263,11 @@ def build(
     with tempfile.NamedTemporaryFile() as tmp:
         dockerfile = tmp.name
         real_context_path = os.path.realpath(root_path)
-        content = generate_docker_file_content(config)
+        content = generate_docker_file_content(config, real_context_path)
         tmp.write(content.encode("utf-8"))
         tmp.flush()
         if verbose:
-            print("Building with dockerfile content: \n\n" + content + "\n\n")
+            print("Building with dockerfile content: \n===[Dockerfile]==\n" + content + "\n===[/Dockerfile]==\n")
 
         dockerignore = os.path.join(real_context_path, ".dockerignore")
         dockerignore_created = write_dockerignore_if_needed(dockerignore)
@@ -226,36 +276,29 @@ def build(
             full_image_name = f"{config.image_name}:{first_tag}"
             print(f"Building image: {full_image_name} 🔨")
             docker_client = docker.from_env()
+            start_time = time.time()
             try:
-                docker_client.images.build(
+                _, decoder = docker_client.images.build(
                     path=real_context_path,
                     dockerfile=dockerfile,
                     tag=full_image_name,
                     rm=False
                 )
+                if verbose:
+                    print_build_logs(decoder)
             except BuildError as e:
                 iterable = iter(e.build_log)
                 print("❌ Build failed, printing execution logs:\n\n")
-                while True:
-                    try:
-                        item = next(iterable)
-                        if "stream" in item:
-                            print(item["stream"])
-                        elif "error" in item:
-                            print(item["error"])
-                        else:
-                            print(str(item))
-                    except StopIteration:
-                        break
+                print_build_logs(iterable)
                 print("Error: " + str(e))
                 raise e
 
             for tag in config.image_tags:
                 if tag == first_tag:
                     continue
-                full_image_name = f"{config.image_name}:{tag}"
                 docker_client.images.get(full_image_name).tag(config.image_name, tag=tag)
-            print(f"Successfully built images: ✅")
+            diff = time.time() - start_time
+            print(f"Successfully built images: ✅ ({round(diff, 1)}s)")
             for tag in config.image_tags:
                 print(f"  - {config.image_name}:{tag}")
         finally:
@@ -264,6 +307,20 @@ def build(
                     os.remove(dockerignore)
                 except:
                     pass
+
+
+def print_build_logs(iterable):
+    while True:
+        try:
+            item = next(iterable)
+            if "stream" in item:
+                print(item["stream"], end='')
+            elif "error" in item:
+                print(item["error"], end='')
+            else:
+                pass
+        except StopIteration:
+            break
 
 
 def write_dockerignore_if_needed(dockerignore: str):

@@ -40,7 +40,7 @@ packages = [{include = "app"}]
 entrypoint = "uvicorn app.main:app --host"
     """)
 
-    assert doc.entrypoint == "uvicorn app.main:app --host"
+    assert doc.entrypoint == ["uvicorn", "app.main:app", "--host"]
 
 
 def test_parse_entrypoint_with_multiple_packages() -> None:
@@ -64,7 +64,7 @@ entrypoint = "python -m app"
         [tool.dockerize]
         entrypoint = "python -m app2"
 """)
-        assert doc.entrypoint == "python -m app2"
+        assert doc.entrypoint == ["python", "-m", "app2"]
 
 
 def test_parse_pyversion() -> None:
@@ -97,7 +97,7 @@ packages = [{include = "app"}]
 
 def test_parse() -> None:
     config = parse_pyproject_toml(test_project)
-    content = generate_docker_file_content(config)
+    content = generate_docker_file_content(config, test_project)
     print(content)
     assert content == """
 FROM python:3.11-slim-buster as builder
