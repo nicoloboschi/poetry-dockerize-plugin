@@ -107,6 +107,8 @@ ENV POETRY_NO_INTERACTION=1
 ENV POETRY_VIRTUALENVS_IN_PROJECT=1
 ENV POETRY_VIRTUALENVS_CREATE=1
 ENV POETRY_CACHE_DIR=/tmp/poetry_cache
+RUN poetry config virtualenvs.create false && poetry config virtualenvs.in-project false
+
 
 ARG DEBIAN_FRONTEND=noninteractive
 
@@ -114,9 +116,15 @@ RUN echo 'Acquire::http::Timeout "30";\\nAcquire::http::ConnectionAttemptDelayMs
      && apt-get update \
      && apt-get -y dist-upgrade \
      && apt-get -y install git
-ADD . /app/
+RUN mkdir /app
+COPY pyproject.toml /app/pyproject.toml
+
+
+RUN cd /app && poetry install --no-interaction --no-ansi --no-root
+
+COPY ./app /app/app
+
 RUN poetry -V
-RUN cd /app && poetry install && rm -rf $POETRY_CACHE_DIR
 
 FROM python:3.11-slim-buster as runtime
 

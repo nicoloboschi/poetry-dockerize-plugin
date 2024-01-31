@@ -115,7 +115,7 @@ entrypoint = "python -m {packages[0]['include']}"
     if not config.entrypoint:
         raise ValueError('No package found in pyproject.toml and no entrypoint specified in dockerize section')
 
-    config.apt_packages = dockerize_section.apt_packages or []
+    config.runtime_apt_packages = dockerize_section.apt_packages or []
     if 'packages' in tool_poetry:
         config.app_packages += [package["include"] for package in tool_poetry['packages']]
 
