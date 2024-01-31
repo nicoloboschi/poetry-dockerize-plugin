@@ -191,7 +191,7 @@ def generate_add_project_toml_str(config: ProjectConfiguration, real_context_pat
     if os.path.exists(os.path.join(real_context_path, "poetry.lock")):
         add_str += "COPY poetry.lock /app/poetry.lock\n"
     add_str += "COPY pyproject.toml /app/pyproject.toml\n"
-    for package in config.deps_packages:
+    for package in list(set(config.deps_packages)):
         if os.path.exists(os.path.join(real_context_path, package)):
             add_str += f"COPY ./{package} /app/{package}\n"
         else:
@@ -200,7 +200,7 @@ def generate_add_project_toml_str(config: ProjectConfiguration, real_context_pat
 
 def generate_add_packages_str(config: ProjectConfiguration, real_context_path: str) -> str:
     add_str = ""
-    for package in config.app_packages:
+    for package in list(set(config.app_packages)):
         if os.path.exists(os.path.join(real_context_path, package)):
             add_str += f"COPY ./{package} /app/{package}\n"
         else:
