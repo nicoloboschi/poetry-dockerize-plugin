@@ -222,35 +222,42 @@ def build(
         dockerignore = os.path.join(real_context_path, ".dockerignore")
         dockerignore_created = write_dockerignore_if_needed(dockerignore)
         try:
-            for tag in config.image_tags:
-                full_image_name = f"{config.image_name}:{tag}"
-                print(f"Building image: {full_image_name} 🔨")
-                docker_client = docker.from_env()
-                try:
-                    docker_client.images.build(
-                        path=real_context_path,
-                        dockerfile=dockerfile,
-                        tag=full_image_name,
-                        rm=False
-                    )
-                except BuildError as e:
-                    iterable = iter(e.build_log)
-                    print("❌ Build failed, printing execution logs:\n\n")
-                    while True:
-                        try:
-                            item = next(iterable)
-                            if "stream" in item:
-                                print(item["stream"])
-                            elif "error" in item:
-                                print(item["error"])
-                            else:
-                                print(str(item))
-                        except StopIteration:
-                            break
-                    print("Error: " + str(e))
-                    raise e
+            first_tag = config.image_tags[0]
+            full_image_name = f"{config.image_name}:{first_tag}"
+            print(f"Building image: {full_image_name} 🔨")
+            docker_client = docker.from_env()
+            try:
+                docker_client.images.build(
+                    path=real_context_path,
+                    dockerfile=dockerfile,
+                    tag=full_image_name,
+                    rm=False
+                )
+            except BuildError as e:
+                iterable = iter(e.build_log)
+                print("❌ Build failed, printing execution logs:\n\n")
+                while True:
+                    try:
+                        item = next(iterable)
+                        if "stream" in item:
+                            print(item["stream"])
+                        elif "error" in item:
+                            print(item["error"])
+                        else:
+                            print(str(item))
+                    except StopIteration:
+                        break
+                print("Error: " + str(e))
+                raise e
 
-                print(f"Successfully built image: {full_image_name} ✅")
+            for tag in config.image_tags:
+                if tag == first_tag:
+                    continue
+                full_image_name = f"{config.image_name}:{tag}"
+                docker_client.images.get(full_image_name).tag(config.image_name, tag=tag)
+            print(f"Successfully built images: ✅")
+            for tag in config.image_tags:
+                print(f"  - {config.image_name}:{tag}")
         finally:
             if dockerignore_created:
                 try:

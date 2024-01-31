@@ -123,10 +123,10 @@ poetry dockerize --help
 
 ## Troubleshooting
 
-To troubleshoot the plugin, you can use the `--verbose` flag to get more information about the execution.
+To troubleshoot the plugin, you can use the `--debug` flag to get more information about the execution.
 
 ```bash
-poetry dockerize -v
+poetry dockerize --debug
 ```
 
 ## License

@@ -19,10 +19,9 @@ class DockerCommand(Command):
             default=os.getcwd(),
         ),
         option(
-            "verbose",
-            "v",
+            "debug",
             flag=True,
-            default=False,
+            description="Debug mode",
         ),
     ]
 
