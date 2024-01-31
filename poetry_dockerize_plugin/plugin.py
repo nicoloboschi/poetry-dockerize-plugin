@@ -28,6 +28,7 @@ class DockerCommand(Command):
     def handle(self) -> int:
         build_image(
             path=self.option("path"),
+            verbose=self.option("debug"),
         )
         return 0
 

@@ -40,7 +40,7 @@ packages = [{include = "app"}]
 entrypoint = "uvicorn app.main:app --host"
     """)
 
-    assert doc.entrypoint == "uvicorn app.main:app --host"
+    assert doc.entrypoint == ["uvicorn", "app.main:app", "--host"]
 
 
 def test_parse_entrypoint_with_multiple_packages() -> None:
@@ -64,7 +64,7 @@ entrypoint = "python -m app"
         [tool.dockerize]
         entrypoint = "python -m app2"
 """)
-        assert doc.entrypoint == "python -m app2"
+        assert doc.entrypoint == ["python", "-m", "app2"]
 
 
 def test_parse_pyversion() -> None:
@@ -97,7 +97,7 @@ packages = [{include = "app"}]
 
 def test_parse() -> None:
     config = parse_pyproject_toml(test_project)
-    content = generate_docker_file_content(config)
+    content = generate_docker_file_content(config, test_project)
     print(content)
     assert content == """
 FROM python:3.11-slim-buster as builder
@@ -107,6 +107,8 @@ ENV POETRY_NO_INTERACTION=1
 ENV POETRY_VIRTUALENVS_IN_PROJECT=1
 ENV POETRY_VIRTUALENVS_CREATE=1
 ENV POETRY_CACHE_DIR=/tmp/poetry_cache
+RUN poetry config virtualenvs.create false && poetry config virtualenvs.in-project false
+
 
 ARG DEBIAN_FRONTEND=noninteractive
 
@@ -114,9 +116,15 @@ RUN echo 'Acquire::http::Timeout "30";\\nAcquire::http::ConnectionAttemptDelayMs
      && apt-get update \
      && apt-get -y dist-upgrade \
      && apt-get -y install git
-ADD . /app/
+RUN mkdir /app
+COPY pyproject.toml /app/pyproject.toml
+
+
+RUN cd /app && poetry install --no-interaction --no-ansi --no-root
+
+COPY ./app /app/app
+
 RUN poetry -V
-RUN cd /app && poetry install && rm -rf $POETRY_CACHE_DIR
 
 FROM python:3.11-slim-buster as runtime
 
