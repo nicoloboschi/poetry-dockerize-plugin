@@ -23,7 +23,7 @@ def test() -> None:
 
 def test_and_generate() -> None:
     clean_dockerfile()
-    build_image(path=test_project)
+    build_image(path=test_project, generate=True)
     assert os.path.exists(os.path.join(test_project, "Dockerfile")) is True
 
 
