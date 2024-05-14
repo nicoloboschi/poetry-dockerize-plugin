@@ -86,7 +86,7 @@ name = "myself/myproject-app"
 This examples shows a complete configuration of the docker image:
 
 ```toml
-[tool.docker]
+[tool.dockerize]
 name = "alternative-image-name"
 python = "3.12"
 base-image = "python:3.12-slim"
