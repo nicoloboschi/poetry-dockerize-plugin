@@ -228,10 +228,10 @@ RUN poetry config virtualenvs.create false && poetry config virtualenvs.in-proje
 {generate_apt_packages_str(config.build_apt_packages)}
 {generate_add_project_toml_str(config, real_context_path)}
 
-RUN cd /app && poetry install --no-interaction --no-ansi --no-root
-
 {generate_add_packages_str(config, real_context_path)}
 {generate_extra_instructions_str(config.extra_build_instructions)}
+
+RUN cd /app && poetry install --no-interaction --no-ansi --no-root
 
 FROM {config.base_image} as runtime
 {generate_apt_packages_str(config.runtime_apt_packages)}
@@ -269,7 +269,7 @@ def build(
         real_context_path = os.path.realpath(root_path)
         content = generate_docker_file_content(config, real_context_path)
         if generate:
-            generate_dockerfile_path = root_path.join("Dockerfile")
+            generate_dockerfile_path = os.path.join(real_context_path, "Dockerfile")
             with open(generate_dockerfile_path, "w") as f:
                 f.write(content)
             print(f"Stored Dockerfile to {generate_dockerfile_path} 📄")

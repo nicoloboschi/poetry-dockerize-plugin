@@ -16,7 +16,21 @@ def _parse_pyproject_toml_content(content: str) -> ProjectConfiguration:
 
 
 def test() -> None:
+    clean_dockerfile()
     build_image(path=test_project)
+    assert os.path.exists(os.path.join(test_project, "Dockerfile")) is False
+
+
+def test_and_generate() -> None:
+    clean_dockerfile()
+    build_image(path=test_project, generate=True)
+    assert os.path.exists(os.path.join(test_project, "Dockerfile")) is True
+
+
+def clean_dockerfile():
+    file = os.path.join(test_project, "Dockerfile")
+    if os.path.exists(file):
+        os.remove(file)
 
 
 def test_parse_entrypoint() -> None:
@@ -120,11 +134,11 @@ RUN mkdir /app
 COPY pyproject.toml /app/pyproject.toml
 
 
-RUN cd /app && poetry install --no-interaction --no-ansi --no-root
-
 COPY ./app /app/app
 
 RUN poetry -V
+
+RUN cd /app && poetry install --no-interaction --no-ansi --no-root
 
 FROM python:3.11-slim-buster as runtime
 
