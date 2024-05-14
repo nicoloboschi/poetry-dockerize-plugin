@@ -21,7 +21,12 @@ class DockerCommand(Command):
         option(
             "debug",
             flag=True,
-            description="Debug mode",
+            description="(poetry-dockerize-plugin) Debug mode",
+        ),
+        option(
+            "generate",
+            description="(poetry-dockerize-plugin) Generate and persist Dockerfile",
+            flag=True,
         ),
     ]
 
@@ -29,6 +34,7 @@ class DockerCommand(Command):
         build_image(
             path=self.option("path"),
             verbose=self.option("debug"),
+            generate=self.option("generate"),
         )
         return 0
 

@@ -129,6 +129,14 @@ To troubleshoot the plugin, you can use the `--debug` flag to get more informati
 poetry dockerize --debug
 ```
 
+## Generate Dockerfile
+
+To store the generated Dockerfile, you can use the `--generate` flag.
+
+```bash
+poetry dockerize --generate
+```
+
 ## License
 
 This project is licensed under the terms of the MIT license.

@@ -246,15 +246,16 @@ COPY --from=builder /app/ /app/
 CMD {cmd_str}"""
 
 
-def build_image(path: str, verbose: bool = False) -> None:
+def build_image(path: str, verbose: bool = False, generate: bool = False) -> None:
     config = parse_pyproject_toml(path)
-    build(config=config, root_path=path, verbose=verbose)
+    build(config=config, root_path=path, verbose=verbose, generate=generate)
 
 
 def build(
         root_path: str,
         config: ProjectConfiguration,
-        verbose: bool = False
+        verbose: bool = False,
+        generate: bool = False
 ) -> None:
     """
     Build a docker image from a poetry project.
@@ -264,6 +265,11 @@ def build(
         dockerfile = tmp.name
         real_context_path = os.path.realpath(root_path)
         content = generate_docker_file_content(config, real_context_path)
+        if generate:
+            generate_dockerfile_path = root_path.join("Dockerfile")
+            with open(generate_dockerfile_path, "w") as f:
+                f.write(content)
+            print(f"Stored Dockerfile to {generate_dockerfile_path} 📄")
         tmp.write(content.encode("utf-8"))
         tmp.flush()
         if verbose:
