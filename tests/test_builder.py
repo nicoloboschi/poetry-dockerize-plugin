@@ -117,7 +117,7 @@ def test_parse() -> None:
     content = generate_docker_file_content(config, test_project)
     print(content)
     assert content == """
-FROM python:3.11-slim-buster as builder
+FROM python:3.11-slim-bookworm as builder
 RUN pip install poetry==1.7.1
 
 ENV POETRY_VIRTUALENVS_IN_PROJECT=1
@@ -141,7 +141,7 @@ RUN poetry -V
 
 RUN cd /app && poetry install --no-interaction --no-ansi -E ext
 
-FROM python:3.11-slim-buster as runtime
+FROM python:3.11-slim-bookworm as runtime
 
 ARG DEBIAN_FRONTEND=noninteractive
 
