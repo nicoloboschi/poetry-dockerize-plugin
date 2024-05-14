@@ -139,7 +139,7 @@ COPY ./app /app/app
 
 RUN poetry -V
 
-RUN cd /app && poetry install --no-interaction --no-ansi
+RUN cd /app && poetry install --no-interaction --no-ansi -E ext
 
 FROM python:3.11-slim-buster as runtime
 

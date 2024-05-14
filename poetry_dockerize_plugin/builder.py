@@ -21,6 +21,7 @@ class DockerizeConfiguration:
     labels: dict[str, str] = {}
     apt_packages: List[str] = []
     build_apt_packages: List[str] = []
+    build_poetry_install_args: List[str] = []
     base_image: str = ""
     extra_build_instructions: List[str] = []
     extra_runtime_instructions: List[str] = []
@@ -34,6 +35,7 @@ class ProjectConfiguration:
     envs: dict[str, str] = {}
     labels: dict[str, str]
     build_apt_packages: List[str] = []
+    build_poetry_install_args: List[str] = []
     runtime_apt_packages: List[str] = []
     base_image: str = ""
     extra_build_instructions: List[str] = []
@@ -65,6 +67,7 @@ def parse_dockerize_toml(dict: dict) -> DockerizeConfiguration:
     config.labels = dict.get("labels")
     config.apt_packages = dict.get("apt-packages")
     config.build_apt_packages = dict.get("build-apt-packages")
+    config.build_poetry_install_args = dict.get("build-poetry-install-args")
     config.base_image = dict.get("base-image")
     config.extra_build_instructions = dict.get("extra-build-instructions")
     config.extra_runtime_instructions = dict.get("extra-runtime-instructions")
@@ -118,6 +121,7 @@ entrypoint = "python -m {packages[0]['include']}"
 
     config.runtime_apt_packages = dockerize_section.apt_packages or []
     config.build_apt_packages = dockerize_section.build_apt_packages or []
+    config.build_poetry_install_args = dockerize_section.build_poetry_install_args or []
     if 'packages' in tool_poetry:
         config.app_packages += [package["include"] for package in tool_poetry['packages']]
 
@@ -226,7 +230,7 @@ ENV POETRY_CACHE_DIR=/tmp/poetry_cache
 {generate_add_packages_str(config, real_context_path)}
 {generate_extra_instructions_str(config.extra_build_instructions)}
 
-RUN cd /app && poetry install --no-interaction --no-ansi
+RUN cd /app && poetry install --no-interaction --no-ansi {" ".join(config.build_poetry_install_args)}
 
 FROM {config.base_image} as runtime
 {generate_apt_packages_str(config.runtime_apt_packages)}
