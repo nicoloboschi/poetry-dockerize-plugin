@@ -101,6 +101,7 @@ extra-run-instructions = ["RUN curl https://huggingface.co/transformers/"]
 # Only for build docker layer
 build-apt-packages = ["gcc"]
 extra-build-instructions = ["RUN poetry config http-basic.foo <username> <password>"]
+build-poetry-install-args = ["-E", "all", "--no-root"]
 
 ```
 
@@ -113,8 +114,12 @@ extra-build-instructions = ["RUN poetry config http-basic.foo <username> <passwo
 * `env` declares environment variables inside the docker image.
 * `labels` append labels to the docker image. Default labels are added following the opencontainers specification.
 * `apt-packages` installs apt packages inside the docker image.
-* `extra-build-instructions` adds extra instructions to the docker build (before poetry install). Any modification to the filesystem will be lost after the poetry install. If you need to add files to the image, use the `extra-run-instructions`.
 * `extra-run-instructions` adds extra instructions to the docker run (after poetry install). Any modification to the filesystem will be kept after the poetry install.
+
+For the build step:
+* `build-apt-packages` installs apt packages inside the build docker container.
+* `extra-build-instructions` adds extra instructions to the docker build (before poetry install). Any modification to the filesystem will be lost after the poetry install. If you need to add files to the image, use the `extra-run-instructions`.
+* `build-poetry-install-args` adds additional arguments to the `poetry install` command in the build step.
 
 
 ## Command-Line options

@@ -10,8 +10,11 @@ sample-cli = "app.__main__:main_test"
 
 [tool.poetry.dependencies]
 python = "^3.11"
-flask = "*"
+flask = { version = "*", optional = true }
 llama-index = { git = "https://github.com/run-llama/llama_index.git", branch = "main" }
+
+[tool.poetry.extras]
+ext = ["flask"]
 
 [build-system]
 requires = ["poetry-core"]
@@ -24,3 +27,4 @@ ports = ["5001"]
 apt-packages = ["curl"]
 extra-runtime-instructions = ["RUN echo 'Hello from Dockerfile' > /tmp/hello.txt"]
 extra-build-instructions = ["RUN poetry -V"]
+build-poetry-install-args = ["-E ", "ext"]
