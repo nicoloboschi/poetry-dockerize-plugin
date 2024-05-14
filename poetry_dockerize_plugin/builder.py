@@ -228,10 +228,10 @@ RUN poetry config virtualenvs.create false && poetry config virtualenvs.in-proje
 {generate_apt_packages_str(config.build_apt_packages)}
 {generate_add_project_toml_str(config, real_context_path)}
 
-RUN cd /app && poetry install --no-interaction --no-ansi --no-root
-
 {generate_add_packages_str(config, real_context_path)}
 {generate_extra_instructions_str(config.extra_build_instructions)}
+
+RUN cd /app && poetry install --no-interaction --no-ansi --no-root
 
 FROM {config.base_image} as runtime
 {generate_apt_packages_str(config.runtime_apt_packages)}
