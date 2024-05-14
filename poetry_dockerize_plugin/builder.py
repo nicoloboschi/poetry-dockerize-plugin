@@ -1,4 +1,3 @@
-import logging
 import os.path
 import re
 import sys
@@ -191,9 +190,7 @@ RUN echo 'Acquire::http::Timeout "30";\\nAcquire::http::ConnectionAttemptDelayMs
 
 def generate_add_project_toml_str(config: ProjectConfiguration, real_context_path: str) -> str:
     add_str = "RUN mkdir /app\n"
-    if os.path.exists(os.path.join(real_context_path, "poetry.lock")):
-        add_str += "COPY poetry.lock /app/poetry.lock\n"
-    add_str += "COPY pyproject.toml /app/pyproject.toml\n"
+    add_str += "COPY pyproject.toml poetry.lock* README* /app/\n"
     for package in list(set(config.deps_packages)):
         if os.path.exists(os.path.join(real_context_path, package)):
             add_str += f"COPY ./{package} /app/{package}\n"
@@ -219,11 +216,9 @@ def generate_docker_file_content(config: ProjectConfiguration, real_context_path
 FROM {config.base_image} as builder
 RUN pip install poetry==1.7.1
 
-ENV POETRY_NO_INTERACTION=1
 ENV POETRY_VIRTUALENVS_IN_PROJECT=1
 ENV POETRY_VIRTUALENVS_CREATE=1
 ENV POETRY_CACHE_DIR=/tmp/poetry_cache
-RUN poetry config virtualenvs.create false && poetry config virtualenvs.in-project false
 
 {generate_apt_packages_str(config.build_apt_packages)}
 {generate_add_project_toml_str(config, real_context_path)}
@@ -231,7 +226,7 @@ RUN poetry config virtualenvs.create false && poetry config virtualenvs.in-proje
 {generate_add_packages_str(config, real_context_path)}
 {generate_extra_instructions_str(config.extra_build_instructions)}
 
-RUN cd /app && poetry install --no-interaction --no-ansi --no-root
+RUN cd /app && poetry install --no-interaction --no-ansi
 
 FROM {config.base_image} as runtime
 {generate_apt_packages_str(config.runtime_apt_packages)}

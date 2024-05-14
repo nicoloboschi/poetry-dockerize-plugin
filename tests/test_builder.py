@@ -19,6 +19,9 @@ def test() -> None:
     clean_dockerfile()
     build_image(path=test_project)
     assert os.path.exists(os.path.join(test_project, "Dockerfile")) is False
+    import docker
+    docker_client = docker.from_env()
+    docker_client.containers.run("poetry-sample-app:0.1.0", detach=True, command="sample-cli")
 
 
 def test_and_generate() -> None:
@@ -117,11 +120,9 @@ def test_parse() -> None:
 FROM python:3.11-slim-buster as builder
 RUN pip install poetry==1.7.1
 
-ENV POETRY_NO_INTERACTION=1
 ENV POETRY_VIRTUALENVS_IN_PROJECT=1
 ENV POETRY_VIRTUALENVS_CREATE=1
 ENV POETRY_CACHE_DIR=/tmp/poetry_cache
-RUN poetry config virtualenvs.create false && poetry config virtualenvs.in-project false
 
 
 ARG DEBIAN_FRONTEND=noninteractive
@@ -131,14 +132,14 @@ RUN echo 'Acquire::http::Timeout "30";\\nAcquire::http::ConnectionAttemptDelayMs
      && apt-get -y dist-upgrade \
      && apt-get -y install git
 RUN mkdir /app
-COPY pyproject.toml /app/pyproject.toml
+COPY pyproject.toml poetry.lock* README* /app/
 
 
 COPY ./app /app/app
 
 RUN poetry -V
 
-RUN cd /app && poetry install --no-interaction --no-ansi --no-root
+RUN cd /app && poetry install --no-interaction --no-ansi
 
 FROM python:3.11-slim-buster as runtime
 

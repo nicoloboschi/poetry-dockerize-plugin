@@ -5,6 +5,9 @@ description = ""
 authors = ["Nicolò Boschi <boschi1997@gmail.com>"]
 packages = [{include = "app"}]
 
+[tool.poetry.scripts]
+sample-cli = "app.__main__:main_test"
+
 [tool.poetry.dependencies]
 python = "^3.11"
 flask = "*"
