@@ -269,7 +269,7 @@ def build(
         real_context_path = os.path.realpath(root_path)
         content = generate_docker_file_content(config, real_context_path)
         if generate:
-            generate_dockerfile_path = root_path.join("Dockerfile")
+            generate_dockerfile_path = real_context_path.join("Dockerfile")
             with open(generate_dockerfile_path, "w") as f:
                 f.write(content)
             print(f"Stored Dockerfile to {generate_dockerfile_path} 📄")
