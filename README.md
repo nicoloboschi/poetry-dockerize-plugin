@@ -96,8 +96,12 @@ ports = [5000]
 env = {"MY_APP_ENV" = "dev"}
 labels = {"MY_APP_LABEL" = "dev"}
 apt-packages = ["curl"]
-extra-build-instructions = ["RUN poetry config http-basic.foo <username> <password>"]
 extra-run-instructions = ["RUN curl https://huggingface.co/transformers/"]
+
+# Only for build docker layer
+build-apt-packages = ["gcc"]
+extra-build-instructions = ["RUN poetry config http-basic.foo <username> <password>"]
+
 ```
 
 * `name` customizes the docker image name. 

@@ -21,6 +21,7 @@ class DockerizeConfiguration:
     envs: dict[str, str] = {}
     labels: dict[str, str] = {}
     apt_packages: List[str] = []
+    build_apt_packages: List[str] = []
     base_image: str = ""
     extra_build_instructions: List[str] = []
     extra_runtime_instructions: List[str] = []
@@ -64,6 +65,7 @@ def parse_dockerize_toml(dict: dict) -> DockerizeConfiguration:
     config.envs = dict.get("env")
     config.labels = dict.get("labels")
     config.apt_packages = dict.get("apt-packages")
+    config.build_apt_packages = dict.get("build-apt-packages")
     config.base_image = dict.get("base-image")
     config.extra_build_instructions = dict.get("extra-build-instructions")
     config.extra_runtime_instructions = dict.get("extra-runtime-instructions")
@@ -116,6 +118,7 @@ entrypoint = "python -m {packages[0]['include']}"
         raise ValueError('No package found in pyproject.toml and no entrypoint specified in dockerize section')
 
     config.runtime_apt_packages = dockerize_section.apt_packages or []
+    config.build_apt_packages = dockerize_section.build_apt_packages or []
     if 'packages' in tool_poetry:
         config.app_packages += [package["include"] for package in tool_poetry['packages']]
 
