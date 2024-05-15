@@ -107,7 +107,7 @@ build-poetry-install-args = ["-E", "all", "--no-root"]
 
 * `name` customizes the docker image name. 
 * `python` python version to use. If not specified, will try to be extracted from `tool.poetry.dependencies.python`. Default is `3.11`
-* `base-image` customizes the base image. If not defined, the default base image is `python:<python-version>-slim-buster`. 
+* `base-image` customizes the base image. If not defined, the default base image is `python:<python-version>-slim-bookworm`. 
 * `tags` declares a list of tags for the image.
 * `entrypoint` customizes the entrypoint of the image. If not provided, the default entrypoint is retrieved from the `packages` configuration.
 * `ports` exposes ports

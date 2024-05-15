@@ -147,7 +147,7 @@ entrypoint = "python -m {packages[0]['include']}"
                 print(f"Declared python version dependency is too complex, using default: {python_version}")
             else:
                 print(f"Python version extracted from project configuration: {python_version}")
-        config.base_image = f"python:{python_version}-slim-buster"
+        config.base_image = f"python:{python_version}-slim-bookworm"
     else:
         config.base_image = f"python:{dockerize_section.python}-slim-buster"
 

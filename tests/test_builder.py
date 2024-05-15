@@ -91,7 +91,7 @@ name = "my-app"
 version = "0.1.0"
 packages = [{include = "app"}]
     """)
-    assert doc.base_image == "python:3.11-slim-buster"
+    assert doc.base_image == "python:3.11-slim-bookworm"
     doc = _parse_pyproject_toml_content("""
     [tool.poetry]
     name = "my-app"
@@ -100,7 +100,7 @@ packages = [{include = "app"}]
     [tool.poetry.dependencies]
     python = "^3.9"
 """)
-    assert doc.base_image == "python:3.9-slim-buster"
+    assert doc.base_image == "python:3.9-slim-bookworm"
     doc = _parse_pyproject_toml_content("""
         [tool.poetry]
         name = "my-app"
@@ -109,7 +109,7 @@ packages = [{include = "app"}]
         [tool.poetry.dependencies]
         python = ">3.9,<3.12"
     """)
-    assert doc.base_image == "python:3.11-slim-buster"
+    assert doc.base_image == "python:3.11-slim-bookworm"
 
 
 def test_parse() -> None:
@@ -117,7 +117,7 @@ def test_parse() -> None:
     content = generate_docker_file_content(config, test_project)
     print(content)
     assert content == """
-FROM python:3.11-slim-buster as builder
+FROM python:3.11-slim-bookworm as builder
 RUN pip install poetry==1.7.1
 
 ENV POETRY_VIRTUALENVS_IN_PROJECT=1
@@ -141,7 +141,7 @@ RUN poetry -V
 
 RUN cd /app && poetry install --no-interaction --no-ansi -E ext
 
-FROM python:3.11-slim-buster as runtime
+FROM python:3.11-slim-bookworm as runtime
 
 ARG DEBIAN_FRONTEND=noninteractive
 
