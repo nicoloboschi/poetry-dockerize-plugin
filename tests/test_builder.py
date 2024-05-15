@@ -91,7 +91,7 @@ name = "my-app"
 version = "0.1.0"
 packages = [{include = "app"}]
     """)
-    assert doc.base_image == "python:3.11-slim-buster"
+    assert doc.base_image == "python:3.11-slim-bookworm"
     doc = _parse_pyproject_toml_content("""
     [tool.poetry]
     name = "my-app"
@@ -100,7 +100,7 @@ packages = [{include = "app"}]
     [tool.poetry.dependencies]
     python = "^3.9"
 """)
-    assert doc.base_image == "python:3.9-slim-buster"
+    assert doc.base_image == "python:3.9-slim-bookworm"
     doc = _parse_pyproject_toml_content("""
         [tool.poetry]
         name = "my-app"
@@ -109,7 +109,7 @@ packages = [{include = "app"}]
         [tool.poetry.dependencies]
         python = ">3.9,<3.12"
     """)
-    assert doc.base_image == "python:3.11-slim-buster"
+    assert doc.base_image == "python:3.11-slim-bookworm"
 
 
 def test_parse() -> None:
