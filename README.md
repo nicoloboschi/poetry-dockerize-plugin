@@ -23,7 +23,7 @@ Key features:
 In order to install the plugin you need to have installed a poetry version `>=1.2.0` and type:
 
 ```bash
-poetry self add poetry-dockerize-plugin
+poetry self add poetry-dockerize-plugin@latest
 ```
 
 ## Quickstart
@@ -55,7 +55,7 @@ jobs:
           uses: snok/install-poetry@v1
 
         - name: Install poetry-dockerize-plugin
-          run: poetry self add poetry-dockerize-plugin
+          run: poetry self add poetry-dockerize-plugin@latest
 
         - name: Build and package
           run: |
