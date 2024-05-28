@@ -140,11 +140,13 @@ poetry dockerize --debug
 
 ## Generate Dockerfile
 
-To store the generated Dockerfile, you can use the `--generate` flag.
+To only generate the Dockerfile, you can use the `--generate` flag.
 
 ```bash
 poetry dockerize --generate
 ```
+
+Then you can store the Dockerfile on the repository and use it as a template and customize it as you need. 
 
 ## License
 

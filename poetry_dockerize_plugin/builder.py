@@ -121,6 +121,7 @@ entrypoint = "python -m {packages[0]['include']}"
 
     config.runtime_apt_packages = dockerize_section.apt_packages or []
     config.build_apt_packages = dockerize_section.build_apt_packages or []
+    config.build_apt_packages.append("gcc")
     config.build_poetry_install_args = dockerize_section.build_poetry_install_args or []
     if 'packages' in tool_poetry:
         config.app_packages += [package["include"] for package in tool_poetry['packages']]
@@ -272,6 +273,7 @@ def build(
             with open(generate_dockerfile_path, "w") as f:
                 f.write(content)
             print(f"Stored Dockerfile to {generate_dockerfile_path} 📄")
+            return
         tmp.write(content.encode("utf-8"))
         tmp.flush()
         if verbose:
