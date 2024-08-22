@@ -2,7 +2,7 @@ import os
 import tempfile
 
 from poetry_dockerize_plugin.builder import build_image, parse_pyproject_toml, generate_docker_file_content, \
-    ProjectConfiguration
+    ProjectConfiguration, parse_dockerize_toml
 
 dirname = os.path.dirname(__file__)
 test_project = os.path.join(dirname, 'test_project')
@@ -166,3 +166,29 @@ COPY --from=builder /app/ /app/
 EXPOSE 5001
 RUN echo 'Hello from Dockerfile' > /tmp/hello.txt
 CMD python -m app"""
+
+
+
+def test_parse_from_env() -> None:
+    try:
+        os.environ["DOCKERIZE_ENTRYPOINT"] = "uvicorn app.main:app --host"
+        os.environ["DOCKERIZE_BASE_IMAGE"] = "python:3.9-slim"
+        os.environ["DOCKERIZE_PORTS"] = "5000 5001"
+        os.environ["DOCKERIZE_ENV_VAR1"] = "VALUE1"
+        os.environ["DOCKERIZE_ENV_VAR2"] = "VALUE2"
+        doc = _parse_pyproject_toml_content("""
+    [tool.poetry]
+    name = "my-app"
+    version = "0.1.0"
+        """)
+
+        assert doc.entrypoint == ["uvicorn", "app.main:app", "--host"]
+        assert doc.base_image == "python:3.9-slim"
+        assert doc.ports == [5000, 5001]
+        assert doc.envs == {"VAR1": "VALUE1", "VAR2": "VALUE2"}
+    finally:
+        os.environ.pop("DOCKERIZE_ENTRYPOINT")
+        os.environ.pop("DOCKERIZE_BASE_IMAGE")
+        os.environ.pop("DOCKERIZE_PORTS")
+        os.environ.pop("DOCKERIZE_ENV_VAR1")
+        os.environ.pop("DOCKERIZE_ENV_VAR2")

@@ -121,6 +121,28 @@ For the build step:
 * `extra-build-instructions` adds extra instructions to the docker build (before poetry install). Any modification to the filesystem will be lost after the poetry install. If you need to add files to the image, use the `extra-run-instructions`.
 * `build-poetry-install-args` adds additional arguments to the `poetry install` command in the build step.
 
+You can also pass any option via environment variable by prefixing the key with `DOCKERIZE_`. For example, to set the `entrypoint` you can use the `DOCKERIZE_ENTRYPOINT` environment variable:
+
+```bash
+export DOCKERIZE_ENTRYPOINT="python -m myapp"
+poetry dockerize
+```
+
+or use a .env file which will be loaded by the plugin:
+```
+echo "DOCKERIZE_ENTRYPOINT=python -m myapp" > .env
+poetry dockerize
+```
+
+For dicts such as `env` and `labels`, you can set multiple values by adding multiple variables:
+
+```bash
+export DOCKERIZE_ENV_MY_VAR="my_value"
+export DOCKERIZE_ENV_MY_OTHER_VAR="my_other_value"
+export DOCKERIZE_LABELS_MY_LABEL="label1"
+poetry dockerize
+```
+
 
 ## Command-Line options
 
