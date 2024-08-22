@@ -43,6 +43,7 @@ poetry = "^1.7.1"
 poetry-core = "^1.8.1"
 docker = "^7.1.0"
 requests = "^2.32.2"
+python-dotenv = "^1.0.1"
 
 
 [tool.poetry.group.test.dependencies]

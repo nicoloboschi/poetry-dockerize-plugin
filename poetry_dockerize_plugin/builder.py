@@ -4,11 +4,14 @@ import sys
 import tempfile
 import time
 from pathlib import Path
-from typing import List, Optional
+from typing import List, Optional, Any
 
 import docker
 from docker.errors import BuildError
 from poetry.toml import TOMLFile
+
+from dotenv import load_dotenv
+load_dotenv()
 
 
 class DockerizeConfiguration:
@@ -45,8 +48,7 @@ class ProjectConfiguration:
 
 
 
-def get_list_or_str_from_dict(dict: dict, key: str, split_by: Optional[str] = None) -> List[str]:
-    value = dict.get(key)
+def _parse_list_str(value: Any, split_by: Optional[str] = " ") -> List[str]:
     if value is None:
         return []
     if isinstance(value, list):
@@ -56,22 +58,63 @@ def get_list_or_str_from_dict(dict: dict, key: str, split_by: Optional[str] = No
     return [str(value)]
 
 
-def parse_dockerize_toml(dict: dict) -> DockerizeConfiguration:
+def parse_dockerize_toml(from_dict: dict) -> DockerizeConfiguration:
     config = DockerizeConfiguration()
-    config.name = dict.get("name")
-    config.tags = get_list_or_str_from_dict(dict, "tags")
-    config.entrypoint_cmd = get_list_or_str_from_dict(dict, "entrypoint", split_by=" ")
-    config.python = dict.get("python")
-    config.ports = dict.get("ports")
-    config.envs = dict.get("env")
-    config.labels = dict.get("labels")
-    config.apt_packages = dict.get("apt-packages")
-    config.build_apt_packages = dict.get("build-apt-packages")
-    config.build_poetry_install_args = dict.get("build-poetry-install-args")
-    config.base_image = dict.get("base-image")
-    config.extra_build_instructions = dict.get("extra-build-instructions")
-    config.extra_runtime_instructions = dict.get("extra-runtime-instructions")
+    config.name = _from_env_or_dict_str("name", from_dict)
+    config.tags = _from_env_or_dict_list_str("tags", from_dict)
+    config.entrypoint_cmd = _from_env_or_dict_list_str("entrypoint", from_dict, split_by=" ")
+    config.python = _from_env_or_dict_str("python", from_dict)
+    config.ports = _from_env_or_dict_list_int("ports", from_dict)
+    config.envs = _from_env_or_dict_to_dict("env", from_dict)
+    config.labels = _from_env_or_dict_to_dict("labels", from_dict)
+    config.apt_packages = _from_env_or_dict_list_str("apt-packages", from_dict)
+    config.build_apt_packages = _from_env_or_dict_list_str("build-apt-packages", from_dict)
+    config.build_poetry_install_args = _from_env_or_dict_list_str("build-poetry-install-args", from_dict)
+    config.base_image = _from_env_or_dict_str("base-image", from_dict)
+    config.extra_build_instructions = _from_env_or_dict_list_str("extra-build-instructions", from_dict)
+    config.extra_runtime_instructions = _from_env_or_dict_list_str("extra-runtime-instructions", from_dict)
     return config
+
+
+def _from_env_or_dict_str(key: str, from_dict: dict) -> str:
+    raw_value = _from_env_or_dict_raw(from_dict, key)
+    if raw_value is None:
+        return ""
+    return str(raw_value)
+
+def _from_env_or_dict_list_str(key: str, from_dict: dict, split_by: Optional[str] = None) -> List[str]:
+    raw_value = _from_env_or_dict_raw(from_dict, key)
+    return _parse_list_str(raw_value, split_by)
+
+def _from_env_or_dict_list_int(key: str, from_dict: dict) -> List[int]:
+    raw_value = _from_env_or_dict_raw(from_dict, key)
+    as_strings = _parse_list_str(raw_value)
+    return [int(s) for s in as_strings]
+
+
+def _from_env_or_dict_to_dict(key: str, from_dict: dict) -> dict[str, str]:
+    to_dict = {}
+    from_dict_value = from_dict.get(key)
+    if from_dict_value is not None:
+        to_dict.update(from_dict_value)
+
+    env_key = _env_key(key)
+    for env_var in os.environ:
+        if env_var.startswith(env_key):
+            key = env_var.replace(env_key + "_", "")
+            value = os.environ[env_var]
+            to_dict[key] = value
+    return to_dict
+
+def _from_env_or_dict_raw(from_dict, key) -> Any:
+    env_key = _env_key(key)
+    raw_value = os.environ.get(env_key) or from_dict.get(key)
+    return raw_value
+
+
+def _env_key(key):
+    env_key = "DOCKERIZE_" + key.upper().replace("-", "_")
+    return env_key
 
 
 def extract_python_version(pyversion: str) -> Optional[str]:
