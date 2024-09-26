@@ -1,11 +1,15 @@
 import os
 import tempfile
+from pathlib import Path
+
+from poetry.factory import Factory
 
 from poetry_dockerize_plugin.builder import build_image, parse_pyproject_toml, generate_docker_file_content, \
-    ProjectConfiguration, parse_dockerize_toml
+    ProjectConfiguration
 
 dirname = os.path.dirname(__file__)
 test_project = os.path.join(dirname, 'test_project')
+dummy_project = os.path.join(dirname, 'dummy_project')
 
 
 def _parse_pyproject_toml_content(content: str) -> ProjectConfiguration:
@@ -57,6 +61,18 @@ packages = [{include = "app"}]
 entrypoint = "uvicorn app.main:app --host"
     """)
 
+    assert doc.entrypoint == ["uvicorn app.main:app --host"]
+
+
+def test_parse_custom_entrypoint_exec_format() -> None:
+    doc = _parse_pyproject_toml_content("""
+    [tool.poetry]
+    name = "my-app"
+    version = "0.1.0"
+    packages = [{include = "app"}]
+    [tool.dockerize]
+    entrypoint = ["uvicorn", "app.main:app", "--host"]
+        """)
     assert doc.entrypoint == ["uvicorn", "app.main:app", "--host"]
 
 
@@ -112,13 +128,45 @@ packages = [{include = "app"}]
     assert doc.base_image == "python:3.11-slim-bookworm"
 
 
+def test_parse_poetry_version_hardcoded() -> None:
+    # Fallback to hardcoded version, no lock file nor version specified in pyproject.toml
+    doc = _parse_pyproject_toml_content("""
+    [tool.poetry]
+    name = "my-app"
+    version = "0.1.0"
+    packages = [{include = "app"}]
+        """)
+    assert doc.poetry_version == "1.8.3"
+
+
+def test_parse_poetry_version_pyproject() -> None:
+    # Use version in pyproject.toml
+    doc = _parse_pyproject_toml_content("""
+    [tool.poetry]
+    name = "my-app"
+    version = "0.1.0"
+    packages = [{include = "app"}]
+    [tool.dockerize]
+    poetry-version = "1.7.1"
+        """)
+    assert doc.poetry_version == "1.7.1"
+
+
+def test_parse_poetry_version_lock_file() -> None:
+    # No explicit version, but lock file is present
+    doc_from_lock = parse_pyproject_toml(dummy_project)
+    # POETRY_VERSION set in workflow, fallback to 1.8.3 if not set
+    expected_poetry_version = os.getenv("POETRY_VERSION", "1.8.3")
+    assert doc_from_lock.poetry_version == expected_poetry_version
+
+
 def test_parse() -> None:
     config = parse_pyproject_toml(test_project)
     content = generate_docker_file_content(config, test_project)
     print(content)
     assert content == """
-FROM python:3.11-slim-bookworm as builder
-RUN pip install poetry==1.7.1
+FROM python:3.11-slim-bookworm AS builder
+RUN pip install poetry==1.8.2
 
 ENV POETRY_VIRTUALENVS_IN_PROJECT=1
 ENV POETRY_VIRTUALENVS_CREATE=1
@@ -166,7 +214,6 @@ COPY --from=builder /app/ /app/
 EXPOSE 5001
 RUN echo 'Hello from Dockerfile' > /tmp/hello.txt
 CMD python -m app"""
-
 
 
 def test_parse_from_env() -> None:

@@ -26,7 +26,9 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           python -m pip install poetry
-
+      - name: Lock pyproject.toml in Test Project
+        run: |
+          poetry -C tests/dummy_project/ lock
       - name: Run unit tests
         run: |
           poetry install
