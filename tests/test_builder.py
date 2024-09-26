@@ -51,7 +51,7 @@ packages = [{include = "app"}]
     assert doc.entrypoint == ['python', '-m', 'app']
 
 
-def test_parse_custom_entrypoint() -> None:
+def test_parse_custom_entrypoint_shell_format() -> None:
     doc = _parse_pyproject_toml_content("""
 [tool.poetry]
 name = "my-app"
@@ -75,6 +75,16 @@ def test_parse_custom_entrypoint_exec_format() -> None:
         """)
     assert doc.entrypoint == ["uvicorn", "app.main:app", "--host"]
 
+def test_parse_custom_entrypoint_exec_format() -> None:
+    doc = _parse_pyproject_toml_content("""
+    [tool.poetry]
+    name = "my-app"
+    version = "0.1.0"
+    packages = [{include = "app"}]
+    [tool.dockerize]
+    entrypoint = ["uvicorn", "app.main:app", "--host"]
+        """)
+    assert doc.entrypoint == ["uvicorn", "app.main:app", "--host"]
 
 def test_parse_entrypoint_with_multiple_packages() -> None:
     try:
@@ -97,7 +107,8 @@ entrypoint = "python -m app"
         [tool.dockerize]
         entrypoint = "python -m app2"
 """)
-        assert doc.entrypoint == ["python", "-m", "app2"]
+        assert len(doc.entrypoint) == 1
+        assert doc.entrypoint[0] == "python -m app2"
 
 
 def test_parse_pyversion() -> None:
@@ -189,7 +200,7 @@ RUN poetry -V
 
 RUN cd /app && poetry install --no-interaction --no-ansi -E ext
 
-FROM python:3.11-slim-bookworm as runtime
+FROM python:3.11-slim-bookworm AS runtime
 
 ARG DEBIAN_FRONTEND=noninteractive
 
@@ -213,7 +224,7 @@ COPY --from=builder /app/ /app/
 
 EXPOSE 5001
 RUN echo 'Hello from Dockerfile' > /tmp/hello.txt
-CMD python -m app"""
+CMD ["python", "-m", "app"]"""
 
 
 def test_parse_from_env() -> None:
@@ -229,7 +240,8 @@ def test_parse_from_env() -> None:
     version = "0.1.0"
         """)
 
-        assert doc.entrypoint == ["uvicorn", "app.main:app", "--host"]
+        assert len(doc.entrypoint) == 1
+        assert doc.entrypoint[0] == "uvicorn app.main:app --host"
         assert doc.base_image == "python:3.9-slim"
         assert doc.ports == [5000, 5001]
         assert doc.envs == {"VAR1": "VALUE1", "VAR2": "VALUE2"}

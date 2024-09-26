@@ -64,7 +64,7 @@ def parse_dockerize_toml(from_dict: dict) -> DockerizeConfiguration:
     config = DockerizeConfiguration()
     config.name = _from_env_or_dict_str("name", from_dict)
     config.tags = _from_env_or_dict_list_str("tags", from_dict)
-    config.entrypoint_cmd = _from_env_or_dict_list_str("entrypoint", from_dict, split_by=" ")
+    config.entrypoint_cmd = _from_env_or_dict_list_str("entrypoint", from_dict)
     config.python = _from_env_or_dict_str("python", from_dict)
     config.ports = _from_env_or_dict_list_int("ports", from_dict)
     config.envs = _from_env_or_dict_to_dict("env", from_dict)
@@ -287,11 +287,14 @@ def generate_add_packages_str(config: ProjectConfiguration, real_context_path: s
 
 def generate_docker_file_content(config: ProjectConfiguration, real_context_path: str) -> str:
     ports_str = "\n".join([f"EXPOSE {port}" for port in config.ports])
-    cmd_str = " ".join(config.entrypoint)
+    if len(config.entrypoint) > 1:
+        cmd_str = "[" + ", ".join(f'"{e}"' for e in config.entrypoint) + "]"
+    else:
+        cmd_str = f'"{config.entrypoint[0]}"'
     envs_str = "\n".join([f"ENV {key}={value}" for key, value in config.envs.items()])
     labels_str = "\n".join([f"LABEL {key}={value}" for key, value in config.labels.items()])
     return f"""
-FROM {config.base_image} as builder
+FROM {config.base_image} AS builder
 RUN pip install poetry=={config.poetry_version}
 
 ENV POETRY_VIRTUALENVS_IN_PROJECT=1
@@ -306,7 +309,7 @@ ENV POETRY_CACHE_DIR=/tmp/poetry_cache
 
 RUN cd /app && poetry install --no-interaction --no-ansi {" ".join(config.build_poetry_install_args)}
 
-FROM {config.base_image} as runtime
+FROM {config.base_image} AS runtime
 {generate_apt_packages_str(config.runtime_apt_packages)}
 {labels_str}
 
