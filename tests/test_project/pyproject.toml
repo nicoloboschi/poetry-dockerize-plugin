@@ -28,3 +28,4 @@ apt-packages = ["curl"]
 extra-runtime-instructions = ["RUN echo 'Hello from Dockerfile' > /tmp/hello.txt"]
 extra-build-instructions = ["RUN poetry -V"]
 build-poetry-install-args = ["-E", "ext"]
+poetry-version = "1.8.2"

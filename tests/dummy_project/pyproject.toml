@@ -1,0 +1,6 @@
+[tool.poetry]
+name = "my-app"
+version = "0.1.0"
+packages = [{include = "app"}]
+authors = ["Dummy Author"]
+description = "My dummy app"
