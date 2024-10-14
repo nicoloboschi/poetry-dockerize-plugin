@@ -252,11 +252,14 @@ def generate_extra_instructions_str(instructions: List[str]) -> str:
         return ""
     return "\n".join(instructions)
 
+def _remove_duplicates(lst: List[str]) -> List[str]:
+    # remove duplicates while keeping order
+    return list(dict.fromkeys(lst))
 
 def generate_apt_packages_str(apt_packages: List[str]) -> str:
     if not len(apt_packages):
         return ""
-    apt_packages_str = " ".join(list(set(apt_packages)))
+    apt_packages_str = " ".join(_remove_duplicates(apt_packages))
     return f"""
 ARG DEBIAN_FRONTEND=noninteractive
 
@@ -269,7 +272,7 @@ RUN echo 'Acquire::http::Timeout "30";\\nAcquire::http::ConnectionAttemptDelayMs
 def generate_add_project_toml_str(config: ProjectConfiguration, real_context_path: str) -> str:
     add_str = "RUN mkdir /app\n"
     add_str += "COPY pyproject.toml poetry.lock* README* /app/\n"
-    for package in list(set(config.deps_packages)):
+    for package in _remove_duplicates(config.deps_packages):
         if os.path.exists(os.path.join(real_context_path, package)):
             add_str += f"COPY ./{package} /app/{package}\n"
         else:
@@ -278,7 +281,7 @@ def generate_add_project_toml_str(config: ProjectConfiguration, real_context_pat
 
 def generate_add_packages_str(config: ProjectConfiguration, real_context_path: str) -> str:
     add_str = ""
-    for package in list(set(config.app_packages)):
+    for package in _remove_duplicates(config.app_packages):
         if os.path.exists(os.path.join(real_context_path, package)):
             add_str += f"COPY ./{package} /app/{package}\n"
         else:
