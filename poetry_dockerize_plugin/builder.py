@@ -163,11 +163,19 @@ def parse_pyproject_toml(pyproject_path) -> ProjectConfiguration:
     config = ProjectConfiguration()
     tool = doc.get('tool', dict())
     tool_poetry = tool.get('poetry', dict())
+    project = doc.get('project', dict())
 
     dockerize_section = parse_dockerize_toml(tool.get('dockerize', dict()))
 
-    config.image_name = dockerize_section.name or tool_poetry['name']
-    config.image_tags = dockerize_section.tags or [tool_poetry["version"], "latest"]
+    if dockerize_section.poetry_version:
+        config.poetry_version = dockerize_section.poetry_version
+    else:
+        # use the same version as the one used to generate the lock file
+        config.poetry_version = extract_poetry_version(pyproject_path)
+    config_name = tool_poetry.get('name') or project.get('name')
+    config_version = tool_poetry.get('version') or project.get('version')
+    config.image_name = dockerize_section.name or config_name
+    config.image_tags = dockerize_section.tags or [config_version, "latest"]
 
     if dockerize_section.entrypoint_cmd:
         config.entrypoint = dockerize_section.entrypoint_cmd
@@ -204,11 +212,14 @@ entrypoint = "python -m {packages[0]['include']}"
     if dockerize_section.base_image:
         config.base_image = dockerize_section.base_image
     elif not dockerize_section.python:
-        if "dependencies" not in tool_poetry or "python" not in tool_poetry["dependencies"]:
+        if ("dependencies" not in tool_poetry or "python" not in tool_poetry["dependencies"]) and ("requires-python" not in project):
             print("No python version specified in pyproject.toml, using 3.11")
             python_version = "3.11"
         else:
-            declared_py_version = tool_poetry["dependencies"]["python"]
+            if "dependencies" in tool_poetry and "python" in tool_poetry["dependencies"]:
+                declared_py_version = tool_poetry["dependencies"]["python"]
+            else:
+                declared_py_version = project["requires-python"]
             python_version = extract_python_version(declared_py_version)
             if python_version is None:
                 python_version = "3.11"
@@ -221,12 +232,21 @@ entrypoint = "python -m {packages[0]['include']}"
 
     config.ports = dockerize_section.ports or []
     config.envs = dockerize_section.envs or {}
-    license = tool_poetry["license"] if "license" in tool_poetry else ""
-    repository = tool_poetry["repository"] if "repository" in tool_poetry else ""
-    authors = tool_poetry["authors"] if "authors" in tool_poetry else ""
+    license = tool_poetry.get("license") or project.get("license", "")
+    repository = tool_poetry.get("repository") or project.get("urls", dict()).get("repository", "")
+    authors = tool_poetry.get("authors", [])
+    if len(authors) == 0:
+        # flatten authors dict from PyPA specs to string
+        authors = []
+        for author in project.get("authors", []):
+            if "name" in author and "email" in author:
+                author_string = f"{author['name']} <{author['email']}>"
+            else:
+                author_string = f"{author.get('name', '')}{author.get('email', '')}"
+            authors.append(author_string)
 
     labels = {"org.opencontainers.image.title": config.image_name,
-              "org.opencontainers.image.version": tool_poetry["version"],
+              "org.opencontainers.image.version": config_version,
               "org.opencontainers.image.authors": authors,
               "org.opencontainers.image.licenses": license,
               "org.opencontainers.image.url": repository,
@@ -237,11 +257,6 @@ entrypoint = "python -m {packages[0]['include']}"
     config.build_runtime_packages = dockerize_section.apt_packages or []
     config.extra_build_instructions = dockerize_section.extra_build_instructions or []
     config.extra_runtime_instructions = dockerize_section.extra_runtime_instructions or []
-    if dockerize_section.poetry_version:
-        config.poetry_version = dockerize_section.poetry_version
-    else:
-        # use the same version as the one used to generate the lock file
-        config.poetry_version = extract_poetry_version(pyproject_path)
 
 
     return config
