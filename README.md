@@ -1,43 +1,102 @@
-# Poetry Dockerize Plugin
+# Dockerpyze (dpy)
+
+> Previously named poetry-dockerpyze-plugin
 
 <p align="center">
-  <a href="https://pypi.org/project/poetry-dockerize-plugin/">
-    <img src="https://img.shields.io/pypi/v/poetry-dockerize-plugin?color=green&amp;label=pypi%20package" alt="PyPI">
+  <a href="https://pypi.org/project/poetry-dockerpyze-plugin/">
+    <img src="https://img.shields.io/pypi/v/poetry-dockerpyze-plugin?color=green&amp;label=pypi%20package" alt="PyPI">
   </a>
-  <a href="https://pepy.tech/project/poetry-dockerize-plugin">
-    <img src="https://static.pepy.tech/badge/poetry-dockerize-plugin" alt="Downloads">
+  <a href="https://pepy.tech/project/poetry-dockerpyze-plugin">
+    <img src="https://static.pepy.tech/badge/poetry-dockerpyze-plugin" alt="Downloads">
   </a>
   <a href="">
-    <img src="https://img.shields.io/pypi/pyversions/poetry-dockerize-plugin?color=green" alt="Py versions">
+    <img src="https://img.shields.io/pypi/pyversions/dockerpyze?color=green" alt="Py versions">
   </a>
 </p>
 
 
-Key features:
+**Key features**:
 
-* Automatically generate a docker image from your Poetry application.
-* Highly configurable. You can configure the image by adding a section in the `pyproject.toml` configuration file.
-
-## Installation
-
-In order to install the plugin you need to have installed a poetry version `>=1.2.0` and type:
-
-```bash
-poetry self add poetry-dockerize-plugin@latest
-```
+* Automatically generate a docker image from your `uv`/`poetry` application.
+* PEP-621 compliant.
+* 100% configurable. You can configure the image by adding a section in the `pyproject.toml` configuration file.
 
 ## Quickstart
 
-No configuration needed! Just type:
+### uv
+1. Install it as a dev dependency:
+```
+uv add dockerpyze --dev
+```
+2. Configure entrypoint in `pyproject.toml`:
+```toml
+[tool.dpy]
+entrypoint = "uv run <your-script>"
+```
+3. Now straight to the point:
 ```bash
-poetry dockerize
->Building image: poetry-sample-app:latest
->Successfully built image: poetry-sample-app:latest
-docker run --rm -it poetry-sample-app:latest
->hello world!
+uv run dockerpyze
+>No .dockerignore found, using a good default one 😉
+>Building image: dockerpyze:latest 🔨
+Successfully built images: ✅  (0.3s)
+  - dockerpyze:latest
+```
+4. Tell your friends about this library 😉
+
+
+### poetry
+0. Move your project to `uv`... well if you can't do it, you can still use `poetry`.
+1. Install the freaking plugin:
+```
+poetry self add dockerpyze@latest
+```
+2. Configure entrypoint in `pyproject.toml`:
+```toml
+[tool.dpy]
+entrypoint = "poetry run <your-script>"
+```
+3. Now straight to the point:
+```bash
+poetry dockerpyze
+>No .dockerignore found, using a good default one 😉
+>Building image: dockerpyze:latest 🔨
+Successfully built images: ✅  (0.3s)
+  - dockerpyze:latest
+```
+4. Tell your friends about this library 😉 (and then switch to `uv`)
+
+## Configuration via pyproject.toml
+To customize some options, you can add a `[tool.dpy]` section in your `pyproject.toml` file. For example to change the image name:
+
+```toml
+[tool.dpy]
+name = "myself/myproject-app"
 ```
 
-### Usage in GitHub Actions
+## Configuration via environment variables
+You can also pass any option via environment variable by prefixing the key with `DPY_`. For example, to set the `entrypoint` you can use the `DPY_ENTRYPOINT` environment variable:
+
+```bash
+export DPY_ENTRYPOINT="python -m myapp"
+uv run dockerpyze
+```
+
+or use a .env file which will be loaded by the plugin:
+```
+echo "DPY_ENTRYPOINT=python -m myapp" > .env
+poetry dockerpyze
+```
+
+For dicts such as `env` and `labels`, you can set multiple values by adding multiple variables:
+
+```bash
+export DPY_ENV_MY_VAR="my_value"
+export DPY_ENV_MY_OTHER_VAR="my_other_value"
+export DPY_LABELS_MY_LABEL="label1"
+poetry dockerpyze
+```
+
+## Usage in GitHub Actions
 You just need to run the quickstart command in your GitHub Actions workflow:
 ```yaml
 
@@ -54,14 +113,14 @@ jobs:
         - name: Install Poetry
           uses: snok/install-poetry@v1
 
-        - name: Install poetry-dockerize-plugin
-          run: poetry self add poetry-dockerize-plugin@latest
+        - name: Install poetry-dockerpyze-plugin
+          run: poetry self add poetry-dockerpyze-plugin@latest
 
         - name: Build and package
           run: |
             poetry install
             poetry run pytest
-            poetry dockerize
+            poetry dockerpyze
 
         - name: Login to Docker Hub
           uses: docker/login-action@v3
@@ -73,36 +132,6 @@ jobs:
           run: docker push my-app:latest
 ```
 
-## Configuration via pyproject.toml
-To customize some options, you can add a `[tool.dockerize]` section in your `pyproject.toml` file. For example to change the image name:
-
-```toml
-[tool.dockerize]
-name = "myself/myproject-app"
-```
-
-## Configuration via environment variables
-You can also pass any option via environment variable by prefixing the key with `DOCKERIZE_`. For example, to set the `entrypoint` you can use the `DOCKERIZE_ENTRYPOINT` environment variable:
-
-```bash
-export DOCKERIZE_ENTRYPOINT="python -m myapp"
-poetry dockerize
-```
-
-or use a .env file which will be loaded by the plugin:
-```
-echo "DOCKERIZE_ENTRYPOINT=python -m myapp" > .env
-poetry dockerize
-```
-
-For dicts such as `env` and `labels`, you can set multiple values by adding multiple variables:
-
-```bash
-export DOCKERIZE_ENV_MY_VAR="my_value"
-export DOCKERIZE_ENV_MY_OTHER_VAR="my_other_value"
-export DOCKERIZE_LABELS_MY_LABEL="label1"
-poetry dockerize
-```
 
 
 ## Configuration API Reference
@@ -110,7 +139,7 @@ poetry dockerize
 This examples shows a complete configuration of the docker image:
 
 ```toml
-[tool.dockerize]
+[tool.dpy]
 name = "alternative-image-name"
 python = "3.12"
 base-image = "python:3.12-slim"
@@ -148,10 +177,11 @@ For the build step:
 
 ## Command line options
 
-All command line options provided by the `poetry-dockerize-plugin` may be accessed by typing:
+All command line options provided by the `dockerpyze` may be accessed by typing:
 
 ```bash
-poetry dockerize --help
+uv run dockerpyze --help
+poetry dockerpyze --help
 ```
 
 ## Troubleshooting
@@ -159,19 +189,22 @@ poetry dockerize --help
 To troubleshoot the plugin, you can use the `--debug` flag to get more information about the execution.
 
 ```bash
-poetry dockerize --debug
+poetry dockerpyze --debug
 ```
 
-## Generate Dockerfile
-
-To only generate the Dockerfile, you can use the `--generate` flag.
-
-```bash
-poetry dockerize --generate
+The build is broken and `--debug` is completely useless? I get it. 
+You can generate the `Dockerfile` and manually build it to have more control over the problem.
+```
+uv run dockerpyze --generate
+docker build Dockerfile .
 ```
 
-Then you can store the Dockerfile on the repository and use it as a template and customize it as you need. 
+>It's totally fine to use the `--generate` flag to generate the initial `Dockerfile` and then customize it. I don't mind.
 
 ## License
 
 This project is licensed under the terms of the MIT license.
+
+## Issues or want to contribute?
+1. Open an issue 
+2. (optional) Open a pull request and I'll merge it, maybe.

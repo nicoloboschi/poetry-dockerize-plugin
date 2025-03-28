@@ -1,10 +1,9 @@
 import os
 import tempfile
 from pathlib import Path
-
 from poetry.factory import Factory
 
-from poetry_dockerize_plugin.builder import build_image, parse_pyproject_toml, generate_docker_file_content, \
+from dockerpyze.builder import build_image, parse_pyproject_toml, generate_docker_file_content, \
     ProjectConfiguration
 
 dirname = os.path.dirname(__file__)
@@ -57,7 +56,7 @@ def test_parse_custom_entrypoint_shell_format() -> None:
 name = "my-app"
 version = "0.1.0"
 packages = [{include = "app"}]
-[tool.dockerize]
+[tool.dpy]
 entrypoint = "uvicorn app.main:app --host"
     """)
 
@@ -70,7 +69,7 @@ def test_parse_custom_entrypoint_exec_format() -> None:
     name = "my-app"
     version = "0.1.0"
     packages = [{include = "app"}]
-    [tool.dockerize]
+    [tool.dpy]
     entrypoint = ["uvicorn", "app.main:app", "--host"]
         """)
     assert doc.entrypoint == ["uvicorn", "app.main:app", "--host"]
@@ -81,7 +80,7 @@ def test_parse_custom_entrypoint_exec_format() -> None:
     name = "my-app"
     version = "0.1.0"
     packages = [{include = "app"}]
-    [tool.dockerize]
+    [tool.dpy]
     entrypoint = ["uvicorn", "app.main:app", "--host"]
         """)
     assert doc.entrypoint == ["uvicorn", "app.main:app", "--host"]
@@ -95,8 +94,8 @@ version = "0.1.0"
 packages = [{include = "app"}, {include = "app2"}]
     """)
     except Exception as e:
-        assert str(e) == """Multiple 'packages' found in pyproject.toml, please specify 'entrypoint' in 'tool.dockerize' section.
-[tool.dockerize] 
+        assert str(e) == """Multiple 'packages' found in pyproject.toml, please specify 'entrypoint' in 'tool.dpy' section.
+[tool.dpy] 
 entrypoint = "python -m app"
 """
         doc = _parse_pyproject_toml_content("""
@@ -104,7 +103,7 @@ entrypoint = "python -m app"
         name = "my-app"
         version = "0.1.0"
         packages = [{include = "app"}, {include = "app2"}]
-        [tool.dockerize]
+        [tool.dpy]
         entrypoint = "python -m app2"
 """)
         assert len(doc.entrypoint) == 1
@@ -157,7 +156,7 @@ def test_parse_poetry_version_pyproject() -> None:
     name = "my-app"
     version = "0.1.0"
     packages = [{include = "app"}]
-    [tool.dockerize]
+    [tool.dpy]
     poetry-version = "1.7.1"
         """)
     assert doc.poetry_version == "1.7.1"
@@ -229,11 +228,11 @@ CMD ["python", "-m", "app"]"""
 
 def test_parse_from_env() -> None:
     try:
-        os.environ["DOCKERIZE_ENTRYPOINT"] = "uvicorn app.main:app --host"
-        os.environ["DOCKERIZE_BASE_IMAGE"] = "python:3.9-slim"
-        os.environ["DOCKERIZE_PORTS"] = "5000 5001"
-        os.environ["DOCKERIZE_ENV_VAR1"] = "VALUE1"
-        os.environ["DOCKERIZE_ENV_VAR2"] = "VALUE2"
+        os.environ["DPY_ENTRYPOINT"] = "uvicorn app.main:app --host"
+        os.environ["DPY_BASE_IMAGE"] = "python:3.9-slim"
+        os.environ["DPY_PORTS"] = "5000 5001"
+        os.environ["DPY_ENV_VAR1"] = "VALUE1"
+        os.environ["DPY_ENV_VAR2"] = "VALUE2"
         doc = _parse_pyproject_toml_content("""
     [tool.poetry]
     name = "my-app"
@@ -246,8 +245,8 @@ def test_parse_from_env() -> None:
         assert doc.ports == [5000, 5001]
         assert doc.envs == {"VAR1": "VALUE1", "VAR2": "VALUE2"}
     finally:
-        os.environ.pop("DOCKERIZE_ENTRYPOINT")
-        os.environ.pop("DOCKERIZE_BASE_IMAGE")
-        os.environ.pop("DOCKERIZE_PORTS")
-        os.environ.pop("DOCKERIZE_ENV_VAR1")
-        os.environ.pop("DOCKERIZE_ENV_VAR2")
+        os.environ.pop("DPY_ENTRYPOINT")
+        os.environ.pop("DPY_BASE_IMAGE")
+        os.environ.pop("DPY_PORTS")
+        os.environ.pop("DPY_ENV_VAR1")
+        os.environ.pop("DPY_ENV_VAR2")
