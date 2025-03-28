@@ -3,13 +3,13 @@
 > Previously named poetry-dockerize-plugin
 
 <p align="center">
-    <img src="https://img.shields.io/pypi/v/poetry-dockerize-plugin?color=green&amp;label=pypi%20package" alt="PyPI">
+    <img src="https://raw.githubusercontent.com/nicoloboschi/dockerpyze/refs/heads/main/dockerpyze.webp" alt="PyPI">
 </p>
 
 
 <p align="center">
   <a href="https://pypi.org/project/dockerpyze/">
-    <img src="https://img.shields.io/pypi/v/poetry-dockerize-plugin?color=green&amp;label=pypi%20package" alt="PyPI">
+    <img src="https://img.shields.io/pypi/v/dockerpyze?color=green&amp;label=pypi%20package" alt="PyPI">
   </a>
   <a href="https://pepy.tech/project/poetry-dockerize-plugin">
     <img src="https://static.pepy.tech/badge/poetry-dockerize-plugin" alt="Downloads">
