@@ -1,13 +1,18 @@
 # Dockerpyze (dpy)
 
-> Previously named poetry-dockerpyze-plugin
+> Previously named poetry-dockerize-plugin
 
 <p align="center">
-  <a href="https://pypi.org/project/poetry-dockerpyze-plugin/">
-    <img src="https://img.shields.io/pypi/v/poetry-dockerpyze-plugin?color=green&amp;label=pypi%20package" alt="PyPI">
+    <img src="https://img.shields.io/pypi/v/poetry-dockerize-plugin?color=green&amp;label=pypi%20package" alt="PyPI">
+</p>
+
+
+<p align="center">
+  <a href="https://pypi.org/project/dockerpyze/">
+    <img src="https://img.shields.io/pypi/v/poetry-dockerize-plugin?color=green&amp;label=pypi%20package" alt="PyPI">
   </a>
-  <a href="https://pepy.tech/project/poetry-dockerpyze-plugin">
-    <img src="https://static.pepy.tech/badge/poetry-dockerpyze-plugin" alt="Downloads">
+  <a href="https://pepy.tech/project/poetry-dockerize-plugin">
+    <img src="https://static.pepy.tech/badge/poetry-dockerize-plugin" alt="Downloads">
   </a>
   <a href="">
     <img src="https://img.shields.io/pypi/pyversions/dockerpyze?color=green" alt="Py versions">
@@ -110,17 +115,21 @@ jobs:
   login:
     runs-on: ubuntu-latest
     steps:
-        - name: Install Poetry
-          uses: snok/install-poetry@v1
+        - name: Check out the repo
+          uses: actions/checkout@v3
 
-        - name: Install poetry-dockerpyze-plugin
-          run: poetry self add poetry-dockerpyze-plugin@latest
+        - name: "Setup: Python 3.11"
+          uses: actions/setup-python@v4
+
+        - name: Install uv
+          run: python -m pip install uv
 
         - name: Build and package
           run: |
-            poetry install
-            poetry run pytest
-            poetry dockerpyze
+            uv sync
+            uv run ruff 
+            uv run pytest
+            uv run dockerpyze
 
         - name: Login to Docker Hub
           uses: docker/login-action@v3
