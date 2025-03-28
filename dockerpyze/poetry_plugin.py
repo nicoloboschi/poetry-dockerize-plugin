@@ -4,12 +4,12 @@ from cleo.commands.command import Command
 from cleo.helpers import option
 from poetry.plugins.application_plugin import ApplicationPlugin
 
-from poetry_dockerize_plugin.builder import build_image
+from dockerize.builder import build_image
 
 
 class DockerCommand(Command):
 
-    name = "dockerize"
+    name = "dockerpyze"
     description = "Generate a docker image of your project automatically, without configuration."
     options = [  # noqa: RUF012
         option(
@@ -21,11 +21,11 @@ class DockerCommand(Command):
         option(
             "debug",
             flag=True,
-            description="(poetry-dockerize-plugin) Debug mode",
+            description="(dockerpyze) Debug mode",
         ),
         option(
             "generate",
-            description="(poetry-dockerize-plugin) Generate and persist Dockerfile",
+            description="(dockerpyze) Generate and persist Dockerfile",
             flag=True,
         ),
     ]
@@ -45,4 +45,4 @@ def factory():
 
 class DockerApplicationPlugin(ApplicationPlugin):
     def activate(self, application):
-        application.command_loader.register_factory("dockerize", factory)
+        application.command_loader.register_factory("dockerpyze", factory)

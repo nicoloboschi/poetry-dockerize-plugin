@@ -1,13 +1,17 @@
-[tool.poetry]
-name = "poetry-dockerize-plugin"
-version = "1.4.0"
-description = "Poetry application to Docker, automatically."
-authors = ["Nicolò Boschi <boschi1997@gmail.com>"]
+[project]
+name = "dockerpyze"
+version = "2.0.0"
+description = "Python applications to Docker, automatically."
+authors = [
+    {name = "Nicolò Boschi", email = "boschi1997@gmail.com"}
+]
+maintainers = [
+    {name = "Nicolò Boschi", email = "boschi1997@gmail.com"},
+]
+requires-python = ">=3.9,<4.0"
 license = "MIT"
 readme = "README.md"
-keywords = ["poetry", "packaging", "docker"]
-repository = "https://github.com/nicoloboschi/poetry-dockerize-plugin"
-documentation = "https://github.com/nicoloboschi/poetry-dockerize-plugin"
+keywords = ["poetry", "packaging", "docker", "uv"]
 classifiers = [
     "Intended Audience :: Developers",
     "Intended Audience :: Information Technology",
@@ -28,34 +32,43 @@ classifiers = [
     "Programming Language :: Python :: 3.8",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
-    "License :: OSI Approved :: MIT License"
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
 ]
-packages = [
-    {include = "poetry_dockerize_plugin", from = "."}
+dependencies = [
+    "poetry-core>=1.8.1,<3",
+    "docker>=7.1.0",
+    "requests>=2.32.2",
+    "python-dotenv>=1.0.1",
+
 ]
+
+[project.urls]
+Homepage = "https://github.com/nicoloboschi/dockerpyze"
+Repository = "https://github.com/nicoloboschi/dockerpyze"
+Documentation = "https://github.com/nicoloboschi/dockerpyze"
+
+[project.scripts]
+dockerpyze = "dockerpyze.builder:entrypoint"
+
+[tool.uv]
+package = true
 
 [tool.poetry.plugins."poetry.application.plugin"]
-dockerize = "poetry_dockerize_plugin.plugin:DockerApplicationPlugin"
-
-[tool.poetry.dependencies]
-python = ">=3.9,<4.0"
-poetry = ">1.7.1,<3"
-poetry-core = ">1.8.1,<3"
-docker = "^7.1.0"
-requests = "^2.32.2"
-python-dotenv = "^1.0.1"
+dockerpyze = "dockerpyze.poetry_plugin:DockerApplicationPlugin"
 
 
+[tool.dpy]
+entrypoint = ["uv", "run", "dockerpyze"]
 
-[tool.poetry.group.test.dependencies]
-pytest = "^7.4.4"
-
-[build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
 
 [tool.pytest.ini_options]
 log_cli = true
 log_cli_level = "INFO"
 log_cli_format = "%(asctime)s %(levelname)s %(message)s"
 log_cli_date_format = "%Y-%m-%d %H:%M:%S"
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3.5",
+]

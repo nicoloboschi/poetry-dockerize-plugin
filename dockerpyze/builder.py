@@ -1,20 +1,21 @@
+import argparse
 import os.path
 import re
 import sys
 import tempfile
 import time
+import tomllib
 from pathlib import Path
-from typing import List, Optional, Any
+from typing import List, Optional, Any, Literal
 
 import docker
 from docker.errors import BuildError
-from poetry.toml import TOMLFile
 
 from dotenv import load_dotenv
 load_dotenv()
 
 
-class DockerizeConfiguration:
+class DpyConfiguration:
     name: str = ""
     tags: List[str] = []
     entrypoint_cmd: List[str] = []
@@ -47,6 +48,7 @@ class ProjectConfiguration:
     deps_packages: List[str] = []
     app_packages: List[str] = []
     poetry_version: str = ""
+    package_manager: Literal["uv", "poetry"]
 
 
 
@@ -60,8 +62,8 @@ def _parse_list_str(value: Any, split_by: Optional[str] = " ") -> List[str]:
     return [str(value)]
 
 
-def parse_dockerize_toml(from_dict: dict) -> DockerizeConfiguration:
-    config = DockerizeConfiguration()
+def parse_toml(from_dict: dict) -> DpyConfiguration:
+    config = DpyConfiguration()
     config.name = _from_env_or_dict_str("name", from_dict)
     config.tags = _from_env_or_dict_list_str("tags", from_dict)
     config.entrypoint_cmd = _from_env_or_dict_list_str("entrypoint", from_dict)
@@ -101,23 +103,30 @@ def _from_env_or_dict_to_dict(key: str, from_dict: dict) -> dict[str, str]:
     if from_dict_value is not None:
         to_dict.update(from_dict_value)
 
-    env_key = _env_key(key)
-    for env_var in os.environ:
-        if env_var.startswith(env_key):
-            key = env_var.replace(env_key + "_", "")
-            value = os.environ[env_var]
-            to_dict[key] = value
+    env_keys = _env_keys(key)
+    for env_key in env_keys:
+        for env_var in os.environ:
+            if env_var.startswith(env_key):
+                key = env_var.replace(env_key + "_", "")
+                value = os.environ[env_var]
+                to_dict[key] = value
     return to_dict
 
 def _from_env_or_dict_raw(from_dict, key) -> Any:
-    env_key = _env_key(key)
-    raw_value = os.environ.get(env_key) or from_dict.get(key)
+    env_keys = _env_keys(key)
+    raw_value = None
+    for env_key in env_keys:
+        raw_value = os.environ.get(env_key)
+        if raw_value:
+            break
+    if not raw_value:
+        raw_value = from_dict.get(key)
     return raw_value
 
 
-def _env_key(key):
-    env_key = "DOCKERIZE_" + key.upper().replace("-", "_")
-    return env_key
+def _env_keys(key):
+    formatted = key.upper().replace("-", "_")
+    return [f"DOCKERIZE_{formatted}", f"DPY_{formatted}", f"DOCKERPYZE_{formatted}"]
 
 
 def extract_python_version(pyversion: str) -> Optional[str]:
@@ -157,61 +166,91 @@ def extract_poetry_version(pyproject_path) -> str:
 
 def parse_pyproject_toml(pyproject_path) -> ProjectConfiguration:
     pyproject_file = os.path.join(pyproject_path, 'pyproject.toml')
-    file = TOMLFile(Path(pyproject_file))
-    doc = file.read()
+    if not os.path.exists(pyproject_file):
+        raise ValueError(f"pyproject.toml not found, expected to be: {pyproject_file}")
+    with open(pyproject_file, "rb") as f:
+        doc = tomllib.load(f)
 
     config = ProjectConfiguration()
     tool = doc.get('tool', dict())
     tool_poetry = tool.get('poetry', dict())
     project = doc.get('project', dict())
 
-    dockerize_section = parse_dockerize_toml(tool.get('dockerize', dict()))
+    dpy_section_dict = tool.get("dpy", dict()) if "dpy" in tool else tool.get('dockerize', dict())
+    dpy_section = parse_toml(dpy_section_dict)
 
-    if dockerize_section.poetry_version:
-        config.poetry_version = dockerize_section.poetry_version
+    poetry_deps = tool_poetry.get("dependencies", dict())
+    uv_lock = Path(pyproject_path).joinpath("uv.lock")
+    poetry_lock = Path(pyproject_path).joinpath("poetry.lock")
+    if uv_lock.exists():
+        config.package_manager = "uv"
+    elif poetry_lock.exists():
+        config.package_manager = "poetry"
     else:
-        # use the same version as the one used to generate the lock file
-        config.poetry_version = extract_poetry_version(pyproject_path)
+        if poetry_deps:
+            config.package_manager = "poetry"
+        else:
+            config.package_manager = "uv"
+    if config.package_manager == "uv":
+        print("Using 'uv' as package manager ⚡️")
+    else:
+        print("Using 'poetry' as package manager 🚀")
+    if config.package_manager == "poetry":
+        if dpy_section.poetry_version:
+            config.poetry_version = dpy_section.poetry_version
+        else:
+            # use the same version as the one used to generate the lock file
+            config.poetry_version = extract_poetry_version(pyproject_path)
     config_name = tool_poetry.get('name') or project.get('name')
     config_version = tool_poetry.get('version') or project.get('version')
-    config.image_name = dockerize_section.name or config_name
-    config.image_tags = dockerize_section.tags or [config_version, "latest"]
+    config.image_name = dpy_section.name or config_name
+    config.image_tags = dpy_section.tags or [config_version, "latest"]
 
-    if dockerize_section.entrypoint_cmd:
-        config.entrypoint = dockerize_section.entrypoint_cmd
+    if dpy_section.entrypoint_cmd:
+        config.entrypoint = dpy_section.entrypoint_cmd
     else:
         if 'packages' in tool_poetry:
             packages = tool_poetry['packages']
             if len(packages) > 1:
-                raise ValueError(f"""Multiple 'packages' found in pyproject.toml, please specify 'entrypoint' in 'tool.dockerize' section.
-[tool.dockerize] 
+                raise ValueError(f"""Multiple 'packages' found in pyproject.toml, please specify 'entrypoint' in 'tool.dpy' section.
+[tool.dpy] 
 entrypoint = "python -m {packages[0]['include']}"
 """)
             package = packages[0]
             name = package["include"]
             config.entrypoint = ["python", "-m", name]
+        else:
+            config.entrypoint = []
 
     if not config.entrypoint:
-        raise ValueError('No package found in pyproject.toml and no entrypoint specified in dockerize section')
+        raise ValueError('No package found in pyproject.toml and no entrypoint specified in dpy section')
 
-    config.runtime_apt_packages = dockerize_section.apt_packages or []
-    config.build_apt_packages = dockerize_section.build_apt_packages or []
+    config.runtime_apt_packages = dpy_section.apt_packages or []
+    config.build_apt_packages = dpy_section.build_apt_packages or []
     config.build_apt_packages.append("gcc")
-    config.build_poetry_install_args = dockerize_section.build_poetry_install_args or []
+    config.build_poetry_install_args = dpy_section.build_poetry_install_args or []
+
+    scripts = project.get("scripts", dict())
+
+    for script_name, script_cmd in scripts.items():
+        script_cmd_package = script_cmd.split(".")[0]
+        config.app_packages.append(script_cmd_package)
+
     if 'packages' in tool_poetry:
         config.app_packages += [package["include"] for package in tool_poetry['packages']]
 
-    if "dependencies" in tool_poetry:
-        for dep in tool_poetry["dependencies"]:
+
+    if poetry_deps:
+        for dep in poetry_deps:
             if isinstance(tool_poetry["dependencies"][dep], dict):
                 if 'path' in tool_poetry["dependencies"][dep]:
                     config.deps_packages.append(tool_poetry["dependencies"][dep]['path'])
                 if 'git' in tool_poetry["dependencies"][dep]:
                     config.build_apt_packages.append("git")
 
-    if dockerize_section.base_image:
-        config.base_image = dockerize_section.base_image
-    elif not dockerize_section.python:
+    if dpy_section.base_image:
+        config.base_image = dpy_section.base_image
+    elif not dpy_section.python:
         if ("dependencies" not in tool_poetry or "python" not in tool_poetry["dependencies"]) and ("requires-python" not in project):
             print("No python version specified in pyproject.toml, using 3.11")
             python_version = "3.11"
@@ -228,10 +267,10 @@ entrypoint = "python -m {packages[0]['include']}"
                 print(f"Python version extracted from project configuration: {python_version}")
         config.base_image = f"python:{python_version}-slim-bookworm"
     else:
-        config.base_image = f"python:{dockerize_section.python}-slim-buster"
+        config.base_image = f"python:{dpy_section.python}-slim-buster"
 
-    config.ports = dockerize_section.ports or []
-    config.envs = dockerize_section.envs or {}
+    config.ports = dpy_section.ports or []
+    config.envs = dpy_section.envs or {}
     license = tool_poetry.get("license") or project.get("license", "")
     repository = tool_poetry.get("repository") or project.get("urls", dict()).get("repository", "")
     authors = tool_poetry.get("authors", [])
@@ -251,12 +290,12 @@ entrypoint = "python -m {packages[0]['include']}"
               "org.opencontainers.image.licenses": license,
               "org.opencontainers.image.url": repository,
               "org.opencontainers.image.source": repository}
-    if dockerize_section.labels:
-        labels.update(dockerize_section.labels)
+    if dpy_section.labels:
+        labels.update(dpy_section.labels)
     config.labels = labels
-    config.build_runtime_packages = dockerize_section.apt_packages or []
-    config.extra_build_instructions = dockerize_section.extra_build_instructions or []
-    config.extra_runtime_instructions = dockerize_section.extra_runtime_instructions or []
+    config.build_runtime_packages = dpy_section.apt_packages or []
+    config.extra_build_instructions = dpy_section.extra_build_instructions or []
+    config.extra_runtime_instructions = dpy_section.extra_runtime_instructions or []
 
 
     return config
@@ -286,7 +325,7 @@ RUN echo 'Acquire::http::Timeout "30";\\nAcquire::http::ConnectionAttemptDelayMs
 
 def generate_add_project_toml_str(config: ProjectConfiguration, real_context_path: str) -> str:
     add_str = "RUN mkdir /app\n"
-    add_str += "COPY pyproject.toml poetry.lock* README* /app/\n"
+    add_str += "COPY pyproject.toml poetry.lock* uv.lock* README* /app/\n"
     for package in _remove_duplicates(config.deps_packages):
         if os.path.exists(os.path.join(real_context_path, package)):
             add_str += f"COPY ./{package} /app/{package}\n"
@@ -311,13 +350,22 @@ def generate_docker_file_content(config: ProjectConfiguration, real_context_path
         cmd_str = f'"{config.entrypoint[0]}"'
     envs_str = "\n".join([f"ENV {key}={value}" for key, value in config.envs.items()])
     labels_str = "\n".join([f"LABEL {key}={value}" for key, value in config.labels.items()])
-    return f"""
-FROM {config.base_image} AS builder
-RUN pip install poetry=={config.poetry_version}
+
+    if config.package_manager == "poetry":
+        pre_apt_commands = f"""RUN pip install poetry=={config.poetry_version}
 
 ENV POETRY_VIRTUALENVS_IN_PROJECT=1
 ENV POETRY_VIRTUALENVS_CREATE=1
 ENV POETRY_CACHE_DIR=/tmp/poetry_cache
+"""
+        install_cmd = f"""RUN cd /app && poetry install --no-interaction --no-ansi {" ".join(config.build_poetry_install_args)}"""
+    else:
+        pre_apt_commands = """RUN pip install uv"""
+        install_cmd = f"""RUN cd /app && uv sync && uv pip install uv && uv build"""
+
+    return f"""
+FROM {config.base_image} AS builder
+{pre_apt_commands}
 
 {generate_apt_packages_str(config.build_apt_packages)}
 {generate_add_project_toml_str(config, real_context_path)}
@@ -325,7 +373,7 @@ ENV POETRY_CACHE_DIR=/tmp/poetry_cache
 {generate_add_packages_str(config, real_context_path)}
 {generate_extra_instructions_str(config.extra_build_instructions)}
 
-RUN cd /app && poetry install --no-interaction --no-ansi {" ".join(config.build_poetry_install_args)}
+{install_cmd}
 
 FROM {config.base_image} AS runtime
 {generate_apt_packages_str(config.runtime_apt_packages)}
@@ -342,6 +390,14 @@ COPY --from=builder /app/ /app/
 {generate_extra_instructions_str(config.extra_runtime_instructions)}
 CMD {cmd_str}"""
 
+
+def entrypoint() -> None:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--path", help="Project root path", default=os.getcwd())
+    parser.add_argument("--generate", help="Generate and persist Dockerfile", action="store_true")
+    parser.add_argument("--debug", help="Verbose mode", action="store_true")
+    args = parser.parse_args()
+    build_image(args.path, verbose=args.debug, generate=args.generate)
 
 def build_image(path: str, verbose: bool = False, generate: bool = False) -> None:
     config = parse_pyproject_toml(path)
@@ -402,7 +458,7 @@ def build(
                     continue
                 docker_client.images.get(full_image_name).tag(config.image_name, tag=tag)
             diff = time.time() - start_time
-            print(f"Successfully built images: ✅ ({round(diff, 1)}s)")
+            print(f"Successfully built images: ✅  ({round(diff, 1)}s)")
             for tag in config.image_tags:
                 print(f"  - {config.image_name}:{tag}")
         finally:
