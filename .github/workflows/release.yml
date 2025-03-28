@@ -27,13 +27,12 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          python -m pip install poetry
+          python -m pip install uv
 
 
       - name: Build
         run: |
-          poetry install --no-root
-          poetry build
+          uv build
 
       - name: Publish package to TestPyPI
         uses: pypa/gh-action-pypi-publish@release/v1

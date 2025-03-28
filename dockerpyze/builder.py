@@ -103,19 +103,20 @@ def _from_env_or_dict_to_dict(key: str, from_dict: dict) -> dict[str, str]:
     if from_dict_value is not None:
         to_dict.update(from_dict_value)
 
-    env_key = _env_key(key)
-    for env_var in os.environ:
-        if env_var.startswith(env_key):
-            key = env_var.replace(env_key + "_", "")
-            value = os.environ[env_var]
-            to_dict[key] = value
+    env_keys = _env_keys(key)
+    for env_key in env_keys:
+        for env_var in os.environ:
+            if env_var.startswith(env_key):
+                key = env_var.replace(env_key + "_", "")
+                value = os.environ[env_var]
+                to_dict[key] = value
     return to_dict
 
 def _from_env_or_dict_raw(from_dict, key) -> Any:
     env_keys = _env_keys(key)
     raw_value = None
     for env_key in env_keys:
-        raw_value = os.environ.get(env_keys)
+        raw_value = os.environ.get(env_key)
         if raw_value:
             break
     if not raw_value:
@@ -178,25 +179,23 @@ def parse_pyproject_toml(pyproject_path) -> ProjectConfiguration:
     dpy_section_dict = tool.get("dpy", dict()) if "dpy" in tool else tool.get('dockerize', dict())
     dpy_section = parse_toml(dpy_section_dict)
 
-    canonical_deps = project.get("dependencies", list())
     poetry_deps = tool_poetry.get("dependencies", dict())
     uv_lock = Path(pyproject_path).joinpath("uv.lock")
     poetry_lock = Path(pyproject_path).joinpath("poetry.lock")
     if uv_lock.exists():
-        pkg_runtime = "uv"
+        config.package_manager = "uv"
     elif poetry_lock.exists():
-        pkg_runtime = "poetry"
+        config.package_manager = "poetry"
     else:
-        if not canonical_deps and not poetry_deps:
-            pkg_runtime = "uv"
+        if poetry_deps:
+            config.package_manager = "poetry"
         else:
-            raise ValueError("No uv.lock or poetry.lock file found, please install your dependencies first (poetry install or uv sync).")
-    if pkg_runtime == "uv":
+            config.package_manager = "uv"
+    if config.package_manager == "uv":
         print("Using 'uv' as package manager ⚡️")
     else:
         print("Using 'poetry' as package manager 🚀")
-    config.package_manager = pkg_runtime
-    if pkg_runtime == "poetry":
+    if config.package_manager == "poetry":
         if dpy_section.poetry_version:
             config.poetry_version = dpy_section.poetry_version
         else:
@@ -220,6 +219,8 @@ entrypoint = "python -m {packages[0]['include']}"
             package = packages[0]
             name = package["include"]
             config.entrypoint = ["python", "-m", name]
+        else:
+            config.entrypoint = []
 
     if not config.entrypoint:
         raise ValueError('No package found in pyproject.toml and no entrypoint specified in dpy section')
@@ -352,11 +353,11 @@ def generate_docker_file_content(config: ProjectConfiguration, real_context_path
 
     if config.package_manager == "poetry":
         pre_apt_commands = f"""RUN pip install poetry=={config.poetry_version}
-        
-        ENV POETRY_VIRTUALENVS_IN_PROJECT=1
-        ENV POETRY_VIRTUALENVS_CREATE=1
-        ENV POETRY_CACHE_DIR=/tmp/poetry_cache
-        """
+
+ENV POETRY_VIRTUALENVS_IN_PROJECT=1
+ENV POETRY_VIRTUALENVS_CREATE=1
+ENV POETRY_CACHE_DIR=/tmp/poetry_cache
+"""
         install_cmd = f"""RUN cd /app && poetry install --no-interaction --no-ansi {" ".join(config.build_poetry_install_args)}"""
     else:
         pre_apt_commands = """RUN pip install uv"""

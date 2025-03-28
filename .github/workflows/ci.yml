@@ -27,11 +27,13 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          python -m pip install poetry==$POETRY_VERSION
+          python -m pip install poetry==$POETRY_VERSION uv
+
       - name: Lock pyproject.toml in Test Project
         run: |
           poetry -C tests/dummy_project/ lock
+          poetry -C tests/test_project/ lock
       - name: Run unit tests
         run: |
-          poetry install
-          poetry run pytest
+          uv sync
+          uv run pytest tests

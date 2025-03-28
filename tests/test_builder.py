@@ -1,7 +1,5 @@
 import os
 import tempfile
-from pathlib import Path
-from poetry.factory import Factory
 
 from dockerpyze.builder import build_image, parse_pyproject_toml, generate_docker_file_content, \
     ProjectConfiguration
@@ -74,6 +72,7 @@ def test_parse_custom_entrypoint_exec_format() -> None:
         """)
     assert doc.entrypoint == ["uvicorn", "app.main:app", "--host"]
 
+
 def test_parse_custom_entrypoint_exec_format() -> None:
     doc = _parse_pyproject_toml_content("""
     [tool.poetry]
@@ -84,6 +83,7 @@ def test_parse_custom_entrypoint_exec_format() -> None:
     entrypoint = ["uvicorn", "app.main:app", "--host"]
         """)
     assert doc.entrypoint == ["uvicorn", "app.main:app", "--host"]
+
 
 def test_parse_entrypoint_with_multiple_packages() -> None:
     try:
@@ -112,28 +112,29 @@ entrypoint = "python -m app"
 
 def test_parse_pyversion() -> None:
     doc = _parse_pyproject_toml_content("""
-[tool.poetry]
+[project]
 name = "my-app"
 version = "0.1.0"
-packages = [{include = "app"}]
+[tool.dpy]
+entrypoint = "uvicorn app.main:app --host"
     """)
     assert doc.base_image == "python:3.11-slim-bookworm"
     doc = _parse_pyproject_toml_content("""
-    [tool.poetry]
+    [project]
     name = "my-app"
     version = "0.1.0"
-    packages = [{include = "app"}]
-    [tool.poetry.dependencies]
-    python = "^3.9"
+    requires-python = "^3.9"
+    [tool.dpy]
+    entrypoint = "uvicorn app.main:app --host"
 """)
     assert doc.base_image == "python:3.9-slim-bookworm"
     doc = _parse_pyproject_toml_content("""
-        [tool.poetry]
+        [project]
         name = "my-app"
         version = "0.1.0"
-        packages = [{include = "app"}]
-        [tool.poetry.dependencies]
-        python = ">3.9,<3.12"
+        requires-python = "^3.11"
+        [tool.dpy]
+        entrypoint = "uvicorn app.main:app --host"
     """)
     assert doc.base_image == "python:3.11-slim-bookworm"
 
@@ -145,6 +146,8 @@ def test_parse_poetry_version_hardcoded() -> None:
     name = "my-app"
     version = "0.1.0"
     packages = [{include = "app"}]
+    [tool.poetry.dependencies]
+    httpx = "^0.19.0"
         """)
     assert doc.poetry_version == "1.8.3"
 
@@ -158,6 +161,8 @@ def test_parse_poetry_version_pyproject() -> None:
     packages = [{include = "app"}]
     [tool.dpy]
     poetry-version = "1.7.1"
+    [tool.poetry.dependencies]
+    httpx = "^0.19.0"
         """)
     assert doc.poetry_version == "1.7.1"
 
@@ -183,6 +188,7 @@ ENV POETRY_VIRTUALENVS_CREATE=1
 ENV POETRY_CACHE_DIR=/tmp/poetry_cache
 
 
+
 ARG DEBIAN_FRONTEND=noninteractive
 
 RUN echo 'Acquire::http::Timeout "30";\\nAcquire::http::ConnectionAttemptDelayMsec "2000";\\nAcquire::https::Timeout "30";\\nAcquire::https::ConnectionAttemptDelayMsec "2000";\\nAcquire::ftp::Timeout "30";\\nAcquire::ftp::ConnectionAttemptDelayMsec "2000";\\nAcquire::Retries "15";' > /etc/apt/apt.conf.d/99timeout_and_retries \
@@ -190,7 +196,7 @@ RUN echo 'Acquire::http::Timeout "30";\\nAcquire::http::ConnectionAttemptDelayMs
      && apt-get -y dist-upgrade \
      && apt-get -y install gcc git
 RUN mkdir /app
-COPY pyproject.toml poetry.lock* README* /app/
+COPY pyproject.toml poetry.lock* uv.lock* README* /app/
 
 
 COPY ./app /app/app
