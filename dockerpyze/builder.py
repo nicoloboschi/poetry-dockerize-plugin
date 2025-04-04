@@ -303,6 +303,7 @@ entrypoint = "python -m {packages[0]['include']}"
     config.build_runtime_packages = dpy_section.apt_packages or []
     config.extra_build_instructions = dpy_section.extra_build_instructions or []
     config.extra_runtime_instructions = dpy_section.extra_runtime_instructions or []
+    config.platform = dpy_section.platform or None
 
 
     return config

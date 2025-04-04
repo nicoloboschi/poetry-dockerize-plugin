@@ -1,6 +1,6 @@
 [project]
 name = "dockerpyze"
-version = "2.1.0"
+version = "2.1.1"
 description = "Python applications to Docker, automatically."
 authors = [
     {name = "Nicolò Boschi", email = "boschi1997@gmail.com"}
