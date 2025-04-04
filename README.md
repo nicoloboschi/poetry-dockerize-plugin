@@ -169,6 +169,7 @@ env = {"MY_APP_ENV" = "dev"}
 labels = {"MY_APP_LABEL" = "dev"}
 apt-packages = ["curl"]
 extra-run-instructions = ["RUN curl https://huggingface.co/transformers/"]
+platform = "linux/amd64"
 
 # Only for build docker layer
 build-apt-packages = ["gcc"]
@@ -188,6 +189,7 @@ build-poetry-install-args = ["-E", "all", "--no-root"]
 * `labels` append labels to the docker image. Default labels are added following the opencontainers specification.
 * `apt-packages` installs apt packages inside the docker image.
 * `extra-run-instructions` adds extra instructions to the docker run (after poetry install). Any modification to the filesystem will be kept after the poetry install.
+* 'platform' forces docker platform to be used. 
 
 For the build step:
 * `build-apt-packages` installs apt packages inside the build docker container.

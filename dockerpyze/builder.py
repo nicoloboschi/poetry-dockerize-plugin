@@ -31,6 +31,7 @@ class DpyConfiguration:
     extra_runtime_instructions: List[str] = []
     poetry_version: str = ""
     packages: list[str]
+    platform: str = ""
 
 
 class ProjectConfiguration:
@@ -50,6 +51,7 @@ class ProjectConfiguration:
     app_packages: List[str] = []
     poetry_version: str = ""
     package_manager: Literal["uv", "poetry"]
+    platform: str = ""
 
 
 
@@ -80,6 +82,7 @@ def parse_toml(from_dict: dict) -> DpyConfiguration:
     config.extra_runtime_instructions = _from_env_or_dict_list_str("extra-runtime-instructions", from_dict)
     config.poetry_version = _from_env_or_dict_str("poetry-version", from_dict)
     config.packages = _from_env_or_dict_list_str("packages", from_dict)
+    config.platform = _from_env_or_dict_str("platform", from_dict)
     return config
 
 
@@ -447,7 +450,8 @@ def build(
                     path=real_context_path,
                     dockerfile=dockerfile,
                     tag=full_image_name,
-                    rm=False
+                    rm=False,
+                    platform=config.platform or None,
                 )
                 if verbose:
                     print_build_logs(decoder)
