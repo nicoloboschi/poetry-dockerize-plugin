@@ -70,6 +70,15 @@ Successfully built images: ✅  (0.3s)
 ```
 4. Tell your friends about this library 😉 (and then switch to `uv`)
 
+
+## Configure entrypoint
+It's recommended to configure the entrypoint for the docker image:
+```toml
+[tool.dpy]
+packages = ["myapp"]
+entrypoint = ["python", "myapp/main.py"]
+```
+
 ## Configuration via pyproject.toml
 To customize some options, you can add a `[tool.dpy]` section in your `pyproject.toml` file. For example to change the image name:
 
@@ -150,6 +159,7 @@ This examples shows a complete configuration of the docker image:
 ```toml
 [tool.dpy]
 name = "alternative-image-name"
+packages = ["myapp"]
 python = "3.12"
 base-image = "python:3.12-slim"
 tags = ["latest-dev"]
@@ -168,6 +178,7 @@ build-poetry-install-args = ["-E", "all", "--no-root"]
 ```
 
 * `name` customizes the docker image name. 
+* `packages` declares the packages to be included in the docker image. If you they are declared in `[project.scripts]` or in `[tool.poetry.scripts]`, they will be automatically added to the list.
 * `python` python version to use. If not specified, will try to be extracted from `tool.poetry.dependencies.python`. Default is `3.11`
 * `base-image` customizes the base image. If not defined, the default base image is `python:<python-version>-slim-bookworm`. 
 * `tags` declares a list of tags for the image.

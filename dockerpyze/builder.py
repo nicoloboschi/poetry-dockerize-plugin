@@ -30,6 +30,7 @@ class DpyConfiguration:
     extra_build_instructions: List[str] = []
     extra_runtime_instructions: List[str] = []
     poetry_version: str = ""
+    packages: list[str]
 
 
 class ProjectConfiguration:
@@ -78,6 +79,7 @@ def parse_toml(from_dict: dict) -> DpyConfiguration:
     config.extra_build_instructions = _from_env_or_dict_list_str("extra-build-instructions", from_dict)
     config.extra_runtime_instructions = _from_env_or_dict_list_str("extra-runtime-instructions", from_dict)
     config.poetry_version = _from_env_or_dict_str("poetry-version", from_dict)
+    config.packages = _from_env_or_dict_list_str("packages", from_dict)
     return config
 
 
@@ -238,6 +240,8 @@ entrypoint = "python -m {packages[0]['include']}"
 
     if 'packages' in tool_poetry:
         config.app_packages += [package["include"] for package in tool_poetry['packages']]
+    if dpy_section.packages:
+        config.app_packages += dpy_section.packages
 
 
     if poetry_deps:
@@ -385,6 +389,7 @@ ENV PYTHONUNBUFFERED=1
 
 WORKDIR /app
 COPY --from=builder /app/ /app/
+ENV PYTHONPATH="${{PYTHONPATH}}:/app"
 
 {ports_str}
 {generate_extra_instructions_str(config.extra_runtime_instructions)}
